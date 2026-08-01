@@ -44,7 +44,10 @@ is fixed once.
 
 **Order matters in that file.** Later sources win a shared maturity, so Makam is
 listed last and owns the short end. Reversing it silently changes the attribution
-of every maturity the two sources share.
+of every maturity the two sources share. Where two sources quote *different*
+maturities either side of a join, winning the collision is not enough — a source
+declares the span it governs instead. See *The 1y splice* below; getting this
+wrong put 14bp of pure artifact into the 12-month projection.
 
 **A partial pull is the dangerous case**, not a total failure. If only one leg
 parsed, a file would still be written and would drop a curve the page needs — so
@@ -99,16 +102,30 @@ The page itself warns when the two BOI curves have gone stale, using the
 published release calendar — so a broken refresh surfaces on the page, not just
 in the Actions log. Makam is exempt: it is daily, on no such schedule.
 
-### One consequence worth knowing
+### The 1y splice, and why a source declares what it governs
 
-Real bills mature on real dates, so the short end now ends at the longest bill —
-around 0.93y, not exactly 1y. The 1y point therefore comes from `shcd08`'s
-mid-month average rather than from a snapshot's rounded `12M` row, and the two
-disagree by a few bp (3.28% at 0.93y against 3.21% at 1y as of 2026-07-31). The
-page draws that stretch grey, as "between two known sources", which is what it
-is: a live quote and a mid-month average, a fortnight apart. Forward rates
-amplify the seam into a visible step near 12m on the anchor path. It is a data
-seam, not a market feature — and not smoothed, deliberately.
+Real bills mature on real dates, so the short end ends at the longest bill —
+around 0.93y, not exactly 1y. "Later sources win a shared maturity" therefore
+never fires at 1y, and the first version of this left `shcd08`'s mid-month 1y
+point standing beside a live bill yield observed a fortnight later. The curve ran
+**3.28% → 3.21% → 3.29%** across 0.93y→1y→2y: a 7bp dip, 25 days wide, between
+two real sources that simply disagree about where 1y is.
+
+A forward rate has to make that dip up. To get from a low 1y to an unchanged 2y,
+the year in between must be priced higher — so the 12-month projection came out
+**+16bp** where the same curve a day earlier said **+2bp**. Roughly 2bp of that
+was the market and 14bp was the seam.
+
+The fix is `governs` in `sources.json`. Makam declares `[0, 1]`: it is
+authoritative over the 0–1y span, not merely over the maturities it happens to
+quote, so points already merged inside that span are dropped along with their
+ownership. `z(1y)` is then interpolated from the last bill to `shcd08`'s 2y point
+— drawn grey, as "between two known sources" — and the 12-month delta reads +2bp
+again. Nothing is invented: no maturity is fabricated and no level is shifted.
+
+`test-merge.mjs` pins both halves of this, including an assertion that the
+un-governed merge *does* produce the inflated delta, so the artifact cannot come
+back unnoticed.
 
 ## Local use
 
@@ -134,7 +151,7 @@ baked-in curve. Serving it over HTTP is what exercises the real path.
 | `makam-short-end.csv` | the 1–12m short end as of 2026-07-30, the fallback if the live pull is refused |
 | `refresh-curve.mjs` | fetches and parses the sources, merges them, writes `curve.json` |
 | `xls-lite.mjs` | dependency-free `.xls`/`.xlsx` reader; inlined into the page so it can read a workbook you drop on it |
-| `test-*.mjs` | 109 assertions over the parsers, the injector and the workbook reader |
+| `test-*.mjs` | 122 assertions over the parsers, the injector, the merge rules and the workbook reader |
 
 The page also still accepts files by hand — one button per series in the **Zero
 curve** panel — which is how you check a new release before the job runs, or

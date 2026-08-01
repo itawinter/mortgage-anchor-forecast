@@ -1022,23 +1022,32 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             entered maturity range the curve is held flat rather than extrapolated.</p>
 
           <p>
-            <strong>The loaded curve.</strong> The unlinked curve splices two Bank of Israel sources
-            at one year. Out to 1y it is <strong>Makam</strong> — central bank bills, yields to
-            maturity, a daily observation (2026-07-30) across the 1- to 12-month bills. From 2y to 15y
-            it is the <em>Nominal rate of return derived from the zero coupon yield curve
-            estimation</em> (<code class="k">Statistics/shcd08_e.xls</code>), which publishes
+            <strong>The loaded curve.</strong> The unlinked curve splices two sources at one year. Out
+            to 1y it is <strong>Makam</strong> — central bank bills, yields to maturity, read live
+            from the Tel Aviv Stock Exchange listing, one point per bill on issue. From 2y to 15y it
+            is the Bank of Israel's <em>Nominal rate of return derived from the zero coupon yield
+            curve estimation</em> (<code class="k">Statistics/shcd08_e.xls</code>), which publishes
             <strong>monthly averages</strong> as alternating month-end (<em>Calendar</em>) and
             mid-month (<em>CPI-dated</em>) rows. Averaged data suits anchor work, since contractual
-            anchors are themselves read off averaged yields rather than a single day's fix.
+            anchors are themselves read off averaged yields rather than a single day's fix. Each
+            source's own date is listed against it in <em>Data sources</em> above.
           </p>
           <p>
             Three things follow from that. The two sources carry <strong>different dates and
-            averaging bases</strong>, so the join at 1y is not perfectly smooth — shcd08 reads 3.21%
-            there against Makam's 3.28%, and Makam wins the overlap as the short-term instrument and
-            the fresher observation. Anything past <strong>15y</strong> is held flat, which the fixed
-            long-term tracks flag. And the <strong>1-month Makam point sits about 45bp above its
-            neighbours</strong> — it is left in as published rather than quietly smoothed, but treat
-            the very front of the curve with care.
+            averaging bases</strong>, so they do not agree exactly where they meet: the zero curve's
+            1y point reads a few bp below the 1y bill. <strong>Makam governs the 0–1y span</strong> as
+            the short-term instrument and the fresher observation — and it governs the whole span, not
+            just the maturities it happens to quote. Bills mature on real dates, so the longest one
+            usually stops short of a round year; where it does, the 1y point is interpolated from that
+            bill to the 2y point rather than taking the older average's level. That matters more than
+            it sounds: mixing the two at adjacent maturities puts a small dip in the curve, and a
+            forward rate has to make that dip up, which turns a few bp of level difference into
+            something that reads like a market view at the 12-month horizon. Anything past
+            <strong>15y</strong> is held flat, which the fixed long-term tracks flag. And the
+            <strong>shortest bill sits well above its neighbours</strong> — days from redemption, the
+            annualisation multiplier is enormous, so a rounding in its price is worth tens of bp. It
+            is left in as published rather than quietly smoothed, but treat the very front of the
+            curve with care.
           </p>
           <p>
             <strong>The CPI-linked curve</strong> is the matching <em>Real rate of return derived
@@ -1053,10 +1062,10 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
           </p>
           <p>
             The two legs are <strong>observed on different dates</strong> — the nominal curve's short
-            end is a daily Makam print for 2026-07-30, the real curve a mid-month average dated
-            2026-07-15. Breakeven inflation is the difference between them, so it carries that
-            fortnight of timing mismatch. Each leg's own date is shown against it rather than a
-            single date for the page, because one number there would misstate the older leg.
+            end is a daily Makam print, the real curve a mid-month average, typically a fortnight
+            apart. Breakeven inflation is the difference between them, so it carries that timing
+            mismatch. Each leg's own date is shown against it rather than a single date for the page,
+            because one number there would misstate the older leg.
           </p>
 
           <div class="notice" style="margin-top:16px">
@@ -1084,26 +1093,36 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
 "use strict";
 
 /* ============================================================
-   Default curves.
+   Default curves — real data, baked in so the page works with no network.
 
-   NOMINAL: real data, two Bank of Israel sources spliced at 1 year.
-     · 1m–1y  Makam (central bank bills) yields to maturity, daily, 2026-07-30.
-              Makam owns the overlap at 1y: it is the short-term instrument and
-              the more recent observation.
+   These arrays and BUILTIN_PROV below are REWRITTEN by
+   `refresh-curve.mjs --inject`, so do not describe their contents here: any date
+   or level written in this comment is stale the next time the job runs. The dates
+   and ranges the baked copy actually carries are in BUILTIN_PROV, which is
+   injected alongside them, and the page renders them in Data sources.
+
+   NOMINAL: two sources spliced at 1 year.
+     · 0–1y   Makam (central bank bills), yields to maturity, daily, one point
+              per bill on issue. Makam GOVERNS this span — see `governs` in
+              sources.json: bills mature on real dates, so the longest one
+              usually stops short of a round year, and letting the older average
+              supply the 1y point instead puts a dip in the curve that the
+              forward-rate identity amplifies.
      · 2y–15y "Nominal rate of return derived from the zero coupon yield curve
-              estimation", MONTHLY AVERAGES (Statistics/shcd08_e.xls), latest
-              row 2026-07-15, CPI-dated average.
-   The two legs carry different dates and averaging bases, so the splice at 1y
-   is not perfectly smooth — shcd08 reads 3.21 there against makam's 3.28.
+              estimation", MONTHLY AVERAGES (Statistics/shcd08_e.xls),
+              alternating month-end (Calendar) and mid-month (CPI-dated) rows.
 
-   REAL (CPI-linked): real data too. "Real rate of return derived from the zero
-   coupon yield curve estimation" (Statistics/shcd07_e.xls) — the Galil curve,
-   same workbook family as shcd08, MONTHLY AVERAGES, latest row 2026-07-15,
-   CPI-dated average, 1y–20y. Note it is HUMPED at the front: 1.70 at 1y, down
-   to 1.61 at 3y, then rising. Real short rates are expected to fall.
+   REAL (CPI-linked): "Real rate of return derived from the zero coupon yield
+   curve estimation" (Statistics/shcd07_e.xls) — the Galil curve, same workbook
+   family as shcd08, MONTHLY AVERAGES, 1y–20y. Note it is HUMPED at the front:
+   it falls from 1y to about 3y before rising, so a CPI-linked variable track
+   projects a FALLING real anchor over the next couple of years — the opposite
+   shape to the unlinked one. Anything assuming monotone-rising curves is wrong
+   for this leg.
 
-   The two legs are observed on different dates (nominal 2026-07-30 from makam,
-   real 2026-07-15), so breakeven inflation carries a small timing mismatch.
+   The two legs are observed on different dates — the nominal short end is a
+   daily print, both curve tables are mid-month averages — so breakeven inflation
+   carries that timing mismatch.
    ============================================================ */
 const DEFAULT_NOMINAL = [
   [0.083333, 3.72], [0.166667, 3.26], [0.25, 3.23], [0.333333, 3.30], [0.416667, 3.28], [0.5, 3.29],

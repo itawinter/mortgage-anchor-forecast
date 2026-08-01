@@ -945,6 +945,36 @@ async function main() {
   let failures = 0;
 
   /**
+   * Merge one source's points into a leg.
+   *
+   * "Later sources win a shared maturity" is enough only when two sources quote
+   * the SAME tenors. Real bills don't: the longest Makam matures at 0.93y, so
+   * nothing landed on 1y, shcd08's mid-month 1y point survived, and the curve
+   * ran 3.28% → 3.21% → 3.29% across 0.93y→1y→2y. A 7bp dip 25 days wide,
+   * between a live bill yield and a fortnight-old fitted average — and the
+   * forward-rate identity turns it into ~14bp at the 12-month horizon, because a
+   * forward has to make up the dip.
+   *
+   * `governs: [lo, hi]` lets a source declare the span it is authoritative over,
+   * so the fresher short-end instrument owns the front of the curve whether or
+   * not it happens to quote the same maturities. Points already merged inside
+   * that span are dropped, along with their ownership, so the source that lost
+   * them does not go on claiming them. It applies when this source is merged, so
+   * source order still matters.
+   */
+  const absorb = (leg, points, s) => {
+    const g = s.governs;
+    if (Array.isArray(g) && g.length === 2 && g.every(v => Number.isFinite(+v))) {
+      const [lo, hi] = [+g[0], +g[1]];
+      for (const t of [...merged[leg].keys()]) {
+        if (t >= lo - 1e-9 && t <= hi + 1e-9) { merged[leg].delete(t); owner[leg].delete(t); }
+      }
+    }
+    for (const [t, r] of points) merged[leg].set(t, r);
+    claim(leg, points);
+  };
+
+  /**
    * Read one source into the merge. Returns false if it contributed nothing, so
    * the caller can try a fallback: the live Makam endpoint sits behind a WAF that
    * may refuse a CI runner, and a daily job that dies on that is worse than one
@@ -979,8 +1009,7 @@ async function main() {
           const { points, note } = normaliseScale(res.points);
           // Later sources win on a shared maturity — list the short-end source
           // last so it owns the overlap.
-          for (const [t, r] of points) merged[leg].set(t, r);
-          claim(leg, points);
+          absorb(leg, points, s);
           noteAsOf(curve, res.diag?.asOf);
           curve.sources.push({
             label: `${path.basename(label)} [${sh.name}]`, leg,
@@ -1054,8 +1083,7 @@ async function main() {
         return false;
       }
       const { points, note } = normaliseScale(res.points);
-      for (const [t, r] of points) merged[s.leg].set(t, r);
-      claim(s.leg, points);
+      absorb(s.leg, points, s);
       noteAsOf(curve, res.diag?.asOf);
       curve.sources.push({
         // An API path is not a name: the page keys a series' colour and title off
@@ -1085,7 +1113,10 @@ async function main() {
     if (!ok && s.fallback) {
       const alt = s.fallback.url || s.fallback.file;
       console.error(`       falling back to ${alt}`);
-      ok = await consumeSource({ leg: s.leg, ...s.fallback });
+      // The stand-in covers the same part of the curve, so it inherits the span
+      // its parent governs — otherwise the snapshot would merge under a
+      // different rule than the live source it replaces.
+      ok = await consumeSource({ leg: s.leg, governs: s.governs, ...s.fallback });
       // A fallback that also fails is still one failed leg, not two.
     }
     if (!ok) failures++;
