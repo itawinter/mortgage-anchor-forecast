@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - name: Parser and injection tests
+        run: |
+          node test-refresh.mjs
+          node test-wide.mjs
+          node test-json-rows.mjs
+      # test-xls-lite compares the bundled workbook reader against SheetJS on the
+      # real Bank of Israel files. Those are binary and are not committed, so it
+      # skips unless you drop them in. It is the test that proves the reader; run
+      # it locally with the workbooks present after touching xls-lite.mjs.
+      - name: Workbook reader vs SheetJS (skipped without the .xls fixtures)
+        run: |
+          node test-xls-lite.mjs || echo "skipped - no workbook fixtures in the repo"

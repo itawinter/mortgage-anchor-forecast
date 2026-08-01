@@ -1,0 +1,3737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Projects the future interest-rate anchor of an Israeli mortgage track from the Bank of Israel government bond zero curve, using forward rates.">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSI4MiIgZm9udC1zaXplPSI4MiI+8J+TiDwvdGV4dD48L3N2Zz4=">
+</head>
+<body>
+<title>Forward Mortgage Anchor Calculator — Israel</title>
+
+<style>
+/* ============================================================
+   Tokens — rates-desk palette. Blue-biased neutrals, petrol
+   primary for observed data, ochre for projected data.
+   ============================================================ */
+:root {
+  color-scheme: light;
+
+  --ground:        #F4F6F8;
+  --panel:         #FFFFFF;
+  --panel-2:       #EDF1F4;
+  --line:          #D5DDE4;
+  --line-soft:     #E4EAEF;
+
+  --ink:           #16212B;
+  --ink-2:         #475766;
+  --ink-3:         #6B7C8B;
+
+  --primary:       #0F7C86;
+  --primary-soft:  #0F7C8618;
+  --primary-line:  #0F7C8640;
+
+  --project:       #B87A0C;
+  --project-soft:  #B87A0C18;
+  --project-line:  #B87A0C45;
+
+  /* Second source in a leg. The zero-curve chart colours by the FILE a point
+     came from, so a spliced curve shows its seams. Cool hues stay with the
+     nominal leg, warm with the real one, keeping the leg readable too. */
+  --src-2:         #4B4FA6;
+  --src-4:         #9A5B2E;
+
+  --rising:        #C0462E;
+  --falling:       #2E7D5B;
+
+  --focus:         #0F7C86;
+  --shadow:        0 1px 2px #16212B0D, 0 8px 24px -12px #16212B1F;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --ground:        #0E161F;
+    --panel:         #16202B;
+    --panel-2:       #1D2935;
+    --line:          #2C3A48;
+    --line-soft:     #232F3C;
+
+    --ink:           #E6EDF3;
+    --ink-2:         #A3B2C0;
+    --ink-3:         #7A8B9A;
+
+    --primary:       #3FC3CE;
+    --primary-soft:  #3FC3CE1A;
+    --primary-line:  #3FC3CE45;
+
+    --project:       #E8A93C;
+    --project-soft:  #E8A93C1A;
+    --project-line:  #E8A93C4A;
+
+    --src-2:         #8E92E8;
+    --src-4:         #D9925A;
+
+    --rising:        #E4705A;
+    --falling:       #5CB68C;
+
+    --focus:         #3FC3CE;
+    --shadow:        0 1px 2px #0006, 0 10px 30px -14px #0009;
+  }
+}
+
+/* Viewer toggle must win over the media query, both directions. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ground: #F4F6F8; --panel: #FFFFFF; --panel-2: #EDF1F4;
+  --line: #D5DDE4; --line-soft: #E4EAEF;
+  --ink: #16212B; --ink-2: #475766; --ink-3: #6B7C8B;
+  --primary: #0F7C86; --primary-soft: #0F7C8618; --primary-line: #0F7C8640;
+  --project: #B87A0C; --project-soft: #B87A0C18; --project-line: #B87A0C45;
+  --src-2: #4B4FA6; --src-4: #9A5B2E;
+  --rising: #C0462E; --falling: #2E7D5B; --focus: #0F7C86;
+  --shadow: 0 1px 2px #16212B0D, 0 8px 24px -12px #16212B1F;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #0E161F; --panel: #16202B; --panel-2: #1D2935;
+  --line: #2C3A48; --line-soft: #232F3C;
+  --ink: #E6EDF3; --ink-2: #A3B2C0; --ink-3: #7A8B9A;
+  --primary: #3FC3CE; --primary-soft: #3FC3CE1A; --primary-line: #3FC3CE45;
+  --project: #E8A93C; --project-soft: #E8A93C1A; --project-line: #E8A93C4A;
+  --src-2: #8E92E8; --src-4: #D9925A;
+  --rising: #E4705A; --falling: #5CB68C; --focus: #3FC3CE;
+  --shadow: 0 1px 2px #0006, 0 10px 30px -14px #0009;
+}
+
+/* ---- Type roles ------------------------------------------------ */
+:root {
+  --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
+           "Book Antiqua", Georgia, serif;
+  --sans:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+           Arial, sans-serif;
+  --mono:  ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono",
+           "Roboto Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.55rem, 1.1rem + 1.6vw, 2.2rem); line-height: 1.15; letter-spacing: -0.01em; }
+h2 { font-size: 1.06rem; letter-spacing: -0.005em; }
+h3 { font-size: 0.94rem; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--ink-3);
+}
+
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+a { color: var(--primary); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ============================================================
+   Shell
+   ============================================================ */
+.wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
+
+.masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
+  align-items: end;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.masthead p.lede {
+  margin: 10px 0 0;
+  max-width: 62ch;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+/* Answer-first headline block */
+.headline-figure {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.headline-figure .figure-text { text-align: right; }
+.headline-figure .big {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.9rem, 1.2rem + 2.4vw, 2.85rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--project);
+  display: block;
+}
+.headline-figure .cap {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+#sparkStrip { display: block; width: 190px; max-width: 100%; height: 58px; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 344px minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+  margin-top: 26px;
+}
+
+/* ============================================================
+   Cards / panels
+   ============================================================ */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.card > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.card > .body { padding: 16px; }
+
+/* Collapsible card: the summary keeps the look of a card header, and the marker
+   rotates so it reads as openable rather than as a dead heading. Used by the
+   Method write-up and by the full projection table, both of which are detail
+   behind the chart rather than the first thing to read. */
+.collapse > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 13px 16px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 8px;
+}
+.collapse[open] > summary { border-bottom: 1px solid var(--line-soft); border-radius: 8px 8px 0 0; }
+.collapse > summary::-webkit-details-marker { display: none; }
+.collapse > summary h2 { flex: 1 1 auto; }
+.collapse > summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 160ms ease;
+}
+.collapse[open] > summary::after { transform: translateY(1px) rotate(225deg); }
+.collapse > summary:hover::after { border-color: var(--primary); }
+.collapse > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.rail { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 18px; }
+.results { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+/* ============================================================
+   Form controls
+   ============================================================ */
+.field-grid { display: flex; flex-direction: column; gap: 14px; }
+
+/* The slope controls sit in the wide results column, so they lay out across it
+   rather than stacking. The parameter field is hidden for methods that take no
+   parameter, and flex-wrap closes the gap when it goes. */
+.adj-grid { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: flex-start; }
+.adj-grid > .field { flex: 1 1 250px; min-width: 0; }
+.adj-grid > #wrapAdjParam { flex: 0 1 170px; }
+.adj-grid > .prov { flex: 2 1 320px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* .field is used on both <label> and <fieldset>, so these must not be
+   scoped to label — a fieldset child would silently lose its styling. */
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field > .lab {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+.field > .hint {
+  font-size: 0.74rem;
+  color: var(--ink-3);
+  line-height: 1.35;
+}
+
+/* "optional" marker on a field label. Unmarked means the projection needs it. */
+.opt {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 0.85em;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-transform: none;
+}
+.cardnote {
+  margin: 0 0 2px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.cardnote b { color: var(--ink-2); font-weight: 600; }
+.cardnote .opt { margin-left: 0; }
+
+/* A related pair of inputs inside the same card, set off by a rule. */
+.subgroup { padding-top: 14px; border-top: 1px solid var(--line-soft); gap: 8px; }
+.subgroup > .sublab {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+.subgroup > .hint { font-size: 0.74rem; color: var(--ink-3); line-height: 1.35; }
+
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
+  width: 100%;
+  padding: 7px 9px;
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.87rem;
+}
+select { font-family: var(--sans); }
+textarea { line-height: 1.5; resize: vertical; }
+input:hover, select:hover, textarea:hover { border-color: var(--primary-line); }
+
+fieldset { margin: 0; padding: 0; border: 0; }
+
+.seg { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.seg button {
+  flex: 1;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  color: var(--ink-2);
+  border: 0;
+  border-right: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--primary); color: var(--panel); }
+
+.chiprow { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 3px 8px;
+  background: transparent;
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--primary); color: var(--primary); }
+
+/* ============================================================
+   Summary tiles
+   ============================================================ */
+/* Flex, not grid: the final row's tiles grow to fill the width, so a tile
+   count that doesn't divide evenly never leaves an exposed gap-coloured void. */
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tile { flex: 1 1 232px; background: var(--panel); padding: 14px 16px; min-width: 0; }
+.tile .tval {
+  display: block;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.45rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-top: 5px;
+}
+.tile .tsub { display: block; margin-top: 3px; font-size: 0.75rem; color: var(--ink-3); }
+.tval.is-primary { color: var(--primary); }
+.tval.is-project { color: var(--project); }
+.tval.is-rising  { color: var(--rising); }
+.tval.is-falling { color: var(--falling); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pill.rising  { background: color-mix(in srgb, var(--rising) 14%, transparent);  color: var(--rising); }
+.pill.falling { background: color-mix(in srgb, var(--falling) 16%, transparent); color: var(--falling); }
+.pill.flat    { background: var(--panel-2); color: var(--ink-2); }
+
+/* ============================================================
+   Tables
+   ============================================================ */
+.tscroll { overflow-x: auto; }
+p.tfoot {
+  margin: 0; padding: 10px 16px 14px;
+  font-size: 0.78rem; color: var(--ink-3); max-width: 78ch;
+}
+table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  position: sticky;
+  top: 0;
+}
+tbody td { border-bottom: 1px solid var(--line-soft); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr.is-today td { background: var(--primary-soft); }
+tbody tr.is-today td:first-child { box-shadow: inset 2px 0 0 var(--primary); }
+td.delta-up   { color: var(--rising); }
+td.delta-down { color: var(--falling); }
+td.lead { font-family: var(--sans); color: var(--ink); }
+td.is-adj { background: var(--primary-soft); }
+td.is-adj strong { color: var(--primary); }
+td .alt { color: var(--ink-3); }
+td .alt::before { content: "→ "; }
+
+/* ============================================================
+   Charts
+   ============================================================ */
+.chartbox { position: relative; padding: 6px 4px 0; }
+canvas.plot { display: block; width: 100%; height: 260px; touch-action: pan-y; }
+
+/* Hover readout. pointer-events:none so the tooltip can never sit between the
+   pointer and the canvas and make the chart flicker as it chases itself. */
+.tip {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  min-width: 132px;
+  padding: 7px 9px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px -6px #16212B40;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.tip .tip-t {
+  display: block;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.tip .tip-r { display: flex; align-items: baseline; gap: 6px; }
+.tip .tip-r i {
+  flex: 0 0 auto;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  transform: translateY(-1px);
+}
+.tip .tip-n { flex: 1 1 auto; padding-right: 10px; }
+.tip .tip-r b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* The curve chart sits in the 344px rail, where 260px of height would make it
+   nearly square and waste the panel. It is a reference plot, not the result. */
+.chartbox.mini { padding: 2px 0 0; margin: 0 -4px; }
+.chartbox.mini canvas.plot { height: 190px; }
+.chartbox.mini + .legend { padding: 8px 0 0; font-size: 0.72rem; gap: 10px; }
+.legend {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  padding: 10px 16px 14px;
+  font-family: var(--mono); font-size: 0.7rem; color: var(--ink-2);
+}
+.legend i {
+  display: inline-block; width: 16px; height: 3px;
+  margin-right: 6px; vertical-align: 2px; border-radius: 2px;
+}
+
+/* ============================================================
+   Method / prose
+   ============================================================ */
+.prose { max-width: 68ch; }
+.prose p { margin: 0 0 12px; color: var(--ink-2); font-size: 0.9rem; }
+.prose p:last-child { margin-bottom: 0; }
+.prose strong { color: var(--ink); font-weight: 600; }
+.prose ul { margin: 0 0 12px; padding-left: 20px; color: var(--ink-2); font-size: 0.9rem; }
+.prose li { margin-bottom: 6px; }
+.prose li:last-child { margin-bottom: 0; }
+.formula {
+  margin: 6px 0 16px;
+  padding: 16px 14px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--primary);
+  border-radius: 0 5px 5px 0;
+  color: var(--ink);
+  overflow-x: auto;
+}
+
+/* Set maths properly: a real stacked fraction, brackets that grow with it, and
+   italic variables against upright digits and operators — the convention that
+   makes an expression readable at a glance. Built from CSS rather than an
+   external typesetter because the page has to stay self-contained. */
+/* Plain inline layout, NOT flex: as a flex container every text node between
+   the tags becomes its own item and picks up the gap, which spreads "f(T, L)"
+   into "f ( T , L )". The fraction and brackets are the only inline-flex parts. */
+.eq {
+  font-family: var(--serif);
+  font-size: 1.06rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.eq i { font-style: italic; }
+.eq sup { font-size: 0.66em; line-height: 0; }
+
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  vertical-align: middle;
+}
+/* NOT .num — that class already means "monospace tabular figure" on this page. */
+.frac > .top { padding: 0 0.6em 0.22em; border-bottom: 1px solid currentColor; }
+.frac > .bot { padding: 0.22em 0.6em 0; }
+
+/* Square brackets drawn as borders so they stretch to the fraction's height
+   instead of sitting as undersized glyphs beside it. */
+.brack { display: inline-flex; align-items: stretch; vertical-align: middle; }
+.brack::before, .brack::after {
+  content: "";
+  width: 0.3em;
+  border: 1px solid currentColor;
+  margin: -0.1em 0;
+}
+.brack::before { border-right: 0; margin-right: 0.22em; }
+.brack::after  { border-left: 0;  margin-left: 0.22em; }
+code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); background: var(--panel-2); padding: 1px 4px; border-radius: 3px; }
+
+.notice {
+  display: flex; gap: 10px;
+  padding: 11px 13px;
+  background: var(--project-soft);
+  border: 1px solid var(--project-line);
+  border-radius: 6px;
+  font-size: 0.83rem;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.notice b { color: var(--ink); }
+.notice::before { content: "!"; font-family: var(--mono); font-weight: 700; color: var(--project); }
+
+/* Curve provenance + import */
+.prov {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding: 8px 11px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--ink-3);
+  border-radius: 0 5px 5px 0;
+  font-family: var(--mono); font-size: 0.72rem; color: var(--ink-2);
+}
+.prov { flex-direction: column; gap: 4px; }
+.prov.is-live { border-left-color: var(--primary); }
+.prov .leg { display: block; color: var(--ink); }
+.prov .leg b { color: var(--primary); font-weight: 500; }
+.prov .leg.is-est b { color: var(--project); }
+.prov .leg.is-est::after { content: " (estimate)"; color: var(--project); }
+.prov .stamp { color: var(--ink-3); margin-left: 8px; }
+.prov .parts {
+  display: block; padding-left: 10px;
+  font-size: 0.94em; color: var(--ink-3); line-height: 1.5;
+}
+
+/* One row per data source: its own load button, what it is, and what is in it. */
+.srcgrid { display: flex; flex-direction: column; gap: 2px; }
+.src {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.src:last-child { border-bottom: 0; }
+.src > .chip { justify-self: start; white-space: nowrap; }
+.src .src-hint { font-size: 0.74rem; color: var(--ink-3); line-height: 1.35; }
+.src .src-state {
+  grid-column: 1 / -1;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-3);
+}
+.src.is-live .src-state { color: var(--primary); }
+.src .src-stale, .src .src-next {
+  grid-column: 1 / -1;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+.src .src-next { color: var(--ink-3); }
+.src .src-stale { color: var(--project); }
+.src .src-stale::before { content: "! "; font-weight: 700; }
+.src.is-stale > .chip { border-color: var(--project); color: var(--project); }
+.src.is-none .src-state { color: var(--project); }
+.src .src-state.bad { color: var(--rising); }
+
+.dropzone {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding: 11px 13px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-size: 0.78rem; color: var(--ink-3);
+}
+.dropzone.is-over { border-color: var(--primary); background: var(--primary-soft); color: var(--ink); }
+.dropzone.is-bad  { border-color: var(--rising); background: color-mix(in srgb, var(--rising) 10%, transparent); color: var(--ink); }
+
+
+.foot {
+  margin-top: 30px; padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem; color: var(--ink-3);
+  max-width: 74ch;
+}
+
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tile .tval, .headline-figure .big { transition: color 140ms ease; }
+}
+
+@media (max-width: 980px) {
+  /* One column. `display: contents` dissolves the rail and results wrappers so
+     every card becomes a direct flex child and can be reordered across them —
+     otherwise the whole input rail (including the curve panel) would sit
+     between the inputs and the answer. Order: what drives the table, then the
+     table, then the supporting panels. Sticky is already off at this width. */
+  .layout { display: flex; flex-direction: column; gap: 20px; }
+  .rail, .results { display: contents; }
+  /* The cards are the flex items now, so the min-width:0 that used to sit on
+     .results has to move onto them — without it the projection table's
+     intrinsic width pushes the whole page into a horizontal scroll. */
+  .rail > *, .results > * { min-width: 0; max-width: 100%; }
+  #cardMortgage    { order: 1; }
+  #coverageWarning { order: 2; }
+  #tiles           { order: 3; }
+  #cardPath        { order: 4; }
+  #cardProj        { order: 5; }
+  #cardSlope       { order: 6; }
+  #cardCurve       { order: 7; }
+  #cardMethod      { order: 9; }
+  .foot            { order: 10; }
+  .masthead { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 18px; }
+  .headline-figure { justify-content: flex-start; }
+  .headline-figure .figure-text { text-align: left; }
+  .headline-figure .cap { white-space: normal; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <span class="eyebrow">Israel · government curve · forward rates</span>
+      <h1>Forward Mortgage Anchor Calculator</h1>
+      <p class="lede">
+        What would the same mortgage track cost if you took it out later? This reads the
+        market-implied answer straight off the Israeli government bond zero curve, using the
+        forward-rate identity, and reports the projected <em>anchor</em> (עוגן) at each horizon.
+      </p>
+    </div>
+    <div class="headline-figure">
+      <canvas id="sparkStrip" aria-hidden="true"></canvas>
+      <div class="figure-text">
+        <span class="big num" id="hlValue">—</span>
+        <span class="cap" id="hlCaption">projected anchor</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- =====================  INSTRUMENT PANEL  ===================== -->
+    <div class="rail">
+
+      <section class="card" id="cardMortgage">
+        <header><h2>Mortgage</h2><span class="eyebrow">inputs</span></header>
+        <div class="body field-grid">
+
+          <p class="cardnote">
+            Three inputs are needed: the <b>track</b>, the <b>term</b> it prices off — reset
+            interval for a variable track, mortgage term for a fixed one — and your
+            <b>current anchor</b>. Everything marked <span class="opt">optional</span> already has
+            a sensible default.
+          </p>
+
+          <label class="field">
+            <span class="lab">Track</span>
+            <select id="track">
+              <option value="var-unlinked" selected>Variable, unlinked (משתנה לא צמודה)</option>
+              <option value="var-linked">Variable, CPI-linked (משתנה צמודה)</option>
+              <option value="fix-unlinked">Fixed, unlinked (קבועה לא צמודה)</option>
+              <option value="fix-linked">Fixed, CPI-linked (קבועה צמודה)</option>
+              <option value="prime">Prime (פריים)</option>
+            </select>
+          </label>
+
+          <label class="field" id="wrapReset">
+            <span class="lab">Reset interval</span>
+            <select id="resetMonths">
+              <option value="12">Every 12 months</option>
+              <option value="18" selected>Every 18 months</option>
+              <option value="24">Every 24 months</option>
+              <option value="30">Every 30 months (2.5y)</option>
+              <option value="60">Every 60 months (5y)</option>
+              <option value="120">Every 120 months (10y)</option>
+            </select>
+            <span class="hint">The anchor is re-read from the curve at each reset, for a term equal to this interval.</span>
+          </label>
+
+          <label class="field">
+            <span class="lab" id="anchorLab">Anchor today (%)</span>
+            <input type="number" id="anchorToday" value="3.40" step="0.01">
+            <span class="hint" id="anchorHint">Your contract's current anchor, as quoted by the bank.</span>
+          </label>
+
+          <label class="field" id="wrapTerm">
+            <span class="lab"><span id="termLab">Mortgage term (years)</span> <span class="opt" id="termOpt" hidden>optional</span></span>
+            <input type="number" id="termYears" value="25" min="1" max="30" step="1">
+            <span class="hint" id="termHint">Used for the payment estimate.</span>
+          </label>
+
+          <label class="field">
+            <span class="lab"><span id="marginLab">Bank margin (%)</span> <span class="opt">optional</span></span>
+            <input type="number" id="margin" value="1.20" step="0.01">
+            <span class="hint">Fixed spread over the anchor. Constant for the life of the loan; enter a negative number for a prime discount. Affects only the <em>incl. margin</em> and payment columns, never the anchor.</span>
+          </label>
+
+          <fieldset class="field">
+            <span class="lab">Calibration <span class="opt">optional</span></span>
+            <div class="seg" role="group" aria-label="Calibration mode">
+              <button type="button" id="calOn"  aria-pressed="true">Anchor to contract</button>
+              <button type="button" id="calOff" aria-pressed="false">Raw curve</button>
+            </div>
+            <span class="hint" id="calHint"></span>
+          </fieldset>
+
+          <label class="field">
+            <span class="lab">Horizons (months) <span class="opt">optional</span></span>
+            <input type="text" id="horizons" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 18, 21, 24, 27, 30, 33, 36">
+            <div class="chiprow" style="margin-top:6px">
+              <button type="button" class="chip" data-h="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 18, 21, 24, 27, 30, 33, 36">monthly to 1y · quarterly to 3y</button>
+              <button type="button" class="chip" data-h="6, 12, 18, 24">6·12·18·24</button>
+              <button type="button" class="chip" data-h="12, 24, 36, 48, 60">annual to 5y</button>
+            </div>
+          </label>
+
+          <fieldset class="field subgroup">
+            <span class="sublab">Payment estimate <span class="opt">optional</span></span>
+            <div class="row2">
+              <label class="field">
+                <span class="lab">Balance (₪)</span>
+                <input type="number" id="principal" value="1000000" step="10000" min="0">
+              </label>
+              <label class="field">
+                <span class="lab">Years left</span>
+                <input type="number" id="payYears" value="25" step="1" min="1" max="40">
+              </label>
+            </div>
+            <span class="hint">
+              Level-payment (שפיצר) monthly instalment at each projected rate, on this balance and
+              remaining term. Leave the balance at zero to drop the payment column.
+            </span>
+          </fieldset>
+        </div>
+      </section>
+
+      <section class="card" id="cardCurve">
+        <header>
+          <h2>Zero curve</h2>
+          <span class="eyebrow">the data behind the forecast</span>
+        </header>
+        <div class="body field-grid">
+
+          <p class="cardnote">
+            The market data the whole projection is read off — <b>not</b> a result. Every anchor in
+            the table above is a forward rate computed from these two curves, so this plot is here
+            to show what went in, and to make it obvious when the wrong file has been loaded.
+          </p>
+
+          <div class="notice" id="placeholderNotice"><span></span></div>
+
+          <div class="chartbox mini">
+            <canvas id="curveChart" class="plot"></canvas>
+          </div>
+          <div class="legend" id="curveLegend"></div>
+
+          <div class="dropzone" id="dropzone">
+            <span>Drop a Bank of Israel workbook, a CSV, or a <code class="k">curve.json</code> here —
+            it is routed to whichever series it matches.</span>
+          </div>
+
+          <fieldset class="field subgroup">
+            <span class="sublab">Data sources</span>
+            <div class="srcgrid" id="srcGrid"></div>
+            <span class="hint">
+              Download the current tables from the Bank of Israel:
+              <a href="https://www.boi.org.il/en/economic-roles/statistics/bonds-and-central-bank-bills-makam/bonds-and-central-bank-bills-makam-yields-to-maturity/#mainContent"
+                 target="_blank" rel="noopener noreferrer">Bonds and MAKAM — yields to maturity</a>.
+              <code class="k">.xls</code>, <code class="k">.xlsx</code> and CSV are all read here;
+              the last row of each table is taken as the most recent, and every figure on the page
+              is recomputed from it.
+            </span>
+          </fieldset>
+
+          <input type="file" id="fileInput" accept=".xls,.xlsx,.csv,.tsv,.txt,.json" hidden>
+
+          <div class="prov" id="provenance" hidden></div>
+
+          <div class="chiprow">
+            <button type="button" class="chip" id="resetCurve">reset to built-in</button>
+            <button type="button" class="chip" id="togglePaste">edit / paste points</button>
+          </div>
+
+          <label class="field" id="pasteWrap" hidden>
+            <span class="lab">Maturity / rate pairs</span>
+            <textarea id="pasteBox" rows="9" placeholder="0.25  3.40&#10;1y    3.25&#10;18m   3.30&#10;2     3.40&#10;10    4.10"></textarea>
+            <span class="hint">Loaded with the curve selected below — edit it, or paste your own over it. One pair per line, any separator. <code class="k">m</code> / <code class="k">mo</code> is read as months, <code class="k">y</code> as years, bare numbers as years.</span>
+            <div class="chiprow" style="margin-top:6px">
+              <select id="pasteLeg" style="width:auto">
+                <option value="nominal" selected>Unlinked curve</option>
+                <option value="real">CPI-linked curve</option>
+              </select>
+              <button type="button" class="chip" id="applyPaste">replace that curve</button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span class="lab">Interpolation</span>
+            <select id="interp">
+              <option value="mono" selected>Monotone cubic on zero rates</option>
+              <option value="loglin">Log-linear on discount factors</option>
+            </select>
+            <span class="hint">Monotone cubic is smooth and shape-preserving. Log-linear gives piecewise-constant forwards — the market-standard convention.</span>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <!-- =====================  RESULTS  ===================== -->
+    <div class="results">
+
+      <div class="notice" id="coverageWarning" hidden><span></span></div>
+
+      <div class="tiles" id="tiles"></div>
+
+      <section class="card" id="cardPath">
+        <header><h2>Anchor path</h2><span class="eyebrow">forward-implied, every horizon</span></header>
+        <div class="chartbox"><canvas id="pathChart" class="plot"></canvas></div>
+        <div class="legend" id="pathLegend"></div>
+      </section>
+
+      <details class="card collapse" id="cardProj">
+        <summary>
+          <h2 id="projTitle">Projected anchor</h2>
+          <span class="eyebrow" id="projMeta"></span>
+        </summary>
+        <div class="tscroll">
+          <table>
+            <thead><tr id="projHead"></tr></thead>
+            <tbody id="projBody"></tbody>
+          </table>
+        </div>
+        <p class="tfoot" id="tableFoot" hidden></p>
+      </details>
+
+      <!-- The slope adjustment is a modelling assumption, not a contract input,
+           so it sits at the foot of the results with the write-up that explains
+           it rather than up in the mortgage panel. -->
+      <section class="card" id="cardSlope">
+        <header><h2>Slope adjustment</h2><span class="eyebrow">term premium</span></header>
+        <div class="body">
+          <div class="adj-grid">
+            <label class="field">
+              <span class="lab">Method</span>
+              <select id="adjMethod">
+                <option value="slope" selected>Long-end slope of this curve</option>
+                <option value="fixed">Fixed premium per year</option>
+                <option value="shrink">Shrink the rise toward today</option>
+                <option value="none">None — raw forwards only</option>
+              </select>
+              <span class="hint">Deducted from the raw forward to strip the part of the rise that is
+                term premium rather than expected rate changes. Never applied to today's row.</span>
+            </label>
+
+            <label class="field" id="wrapAdjParam">
+              <span class="lab" id="adjParamLab">Premium (bp per year)</span>
+              <input type="number" id="adjParam" value="50" step="1" min="0">
+            </label>
+
+            <div class="prov" id="adjReadout"></div>
+          </div>
+        </div>
+      </section>
+
+      <details class="card collapse" id="cardMethod">
+        <summary><h2>Method</h2><span class="eyebrow">how these numbers are produced</span></summary>
+        <div class="body prose">
+          <p>
+            A zero-coupon curve <code class="k">z(t)</code> prices money out to every maturity today.
+            Two points on it pin down the rate the market is implicitly quoting for a loan that
+            <em>starts</em> at <code class="k">T</code> and runs for <code class="k">L</code> years —
+            the forward rate. No-arbitrage forces it:
+          </p>
+          <div class="formula">
+            <span class="eq"><i>f</i>(<i>T</i>, <i>L</i>) = <span
+              class="brack"><span class="frac"><span class="top">(1 + <i>z</i>(<i>T</i>+<i>L</i>))<sup><i
+              >T</i>+<i>L</i></sup></span><span
+              class="bot">(1 + <i>z</i>(<i>T</i>))<sup><i>T</i></sup></span></span></span><sup>1/<i
+              >L</i></sup> &minus; 1</span>
+          </div>
+          <p>
+            For a variable track, the anchor at each reset is a government yield for a term equal to
+            the reset interval. So the anchor expected <code class="k">N</code> months from now is
+            <code class="k">f(N/12, L/12)</code> with <code class="k">L</code> the reset interval. At
+            <code class="k">N = 0</code> this collapses to the spot rate <code class="k">z(L/12)</code>,
+            which is why the table's first row is today.
+          </p>
+          <p>
+            <strong>Calibration.</strong> Your contract's stated anchor rarely equals
+            <code class="k">z(L)</code> exactly — banks read the anchor off a trailing average of
+            published yields over a defined lookback, so it lags the live curve, and the precise
+            definition varies by lender under Proper Conduct of Banking Business Directive 451. With
+            <em>Anchor to contract</em> on, the calculator computes
+            <code class="k">offset = your anchor − z(L)</code> and carries that constant offset across
+            every horizon. You get a path that starts exactly where your contract actually is, and
+            moves the way the curve says it should. <em>Raw curve</em> drops the offset and shows the
+            unadjusted forwards.
+          </p>
+          <p>
+            <strong>The slope adjustment.</strong> A forward rate is the expected future rate
+            <em>plus a term premium</em>, and the premium grows with how far ahead you look. So an
+            upward-sloping curve lifts every projected anchor even if the market expects no rate
+            change at all — the raw path inherits the curve's shape, not just its expectations. The
+            <em>Adjusted</em> column subtracts an estimate of that mechanical component. Three ways to
+            estimate it, all zero at today's row, because today's anchor is observed rather than
+            forecast:
+          </p>
+          <ul>
+            <li>
+              <strong>Long-end slope</strong> (default) — deduct <code class="k">λ · T</code>, with
+              <code class="k">λ</code> the annualised slope of the curve's far end. Past roughly ten
+              years, expected policy changes are small, so residual slope out there is mostly premium
+              accrual. On the loaded curve that is about 5&nbsp;bp per year, taken from the 10y→15y
+              segment. Its virtue is that nothing is hand-tuned: the number comes from your own curve.
+            </li>
+            <li>
+              <strong>Fixed premium</strong> — deduct a flat <code class="k">bp · T</code> you supply,
+              when you have your own view or a published term-premium estimate.
+            </li>
+            <li>
+              <strong>Shrink toward today</strong> — keep a fraction of the projected rise:
+              <code class="k">adjusted = raw − θ · (raw − today)</code>. At θ&nbsp;=&nbsp;1 the path is
+              flat at today's anchor, which is the random-walk forecast. This is the bluntest method
+              and the best supported empirically: forwards are biased predictors of future rates, and
+              a random walk is a stubbornly hard benchmark to beat.
+            </li>
+          </ul>
+          <p>
+            These are transparent heuristics, not a term-structure model — a proper decomposition
+            (Adrian-Crump-Moench, Kim-Wright) fits a factor model to the whole curve and yields a
+            premium that varies by both horizon and maturity. Treat the raw and adjusted columns as
+            bracketing the answer: raw is the rate you could lock in today, adjusted is closer to
+            what a rate-setter's path implies. The truth usually sits between them, and the gap
+            between the two is the honest measure of how much of the projection is premium rather
+            than expectation.
+          </p>
+
+          <p>
+            <strong>Linked vs unlinked.</strong> CPI-linked tracks are read off the real (Galil)
+            curve, so their anchors are <em>real</em> rates — principal and payment are indexed on top.
+            The gap between the two curves at the same horizon is breakeven inflation — the market's
+            price for taking indexation risk — here it runs around 1.6% to 1.8%, inside the Bank of
+            Israel's 1–3% target band. The table shows it only once both legs are real data:
+            computed against a placeholder curve it would be an artefact of an invented number.
+          </p>
+          <p>
+            <strong>Prime.</strong> The prime rate is the Bank of Israel rate plus 1.5pp by
+            convention. Its forward path is taken from the short end — the 3-month forward
+            <code class="k">f(N/12, 0.25)</code> — as a proxy for the expected policy rate, then
+            1.5pp is added. Calibration is against the current prime you enter.
+          </p>
+          <p><strong>Conventions.</strong> Zero rates are read as annual-effective. Monthly instalments
+            use the Israeli quoting convention of a nominal annual rate divided by twelve. Outside the
+            entered maturity range the curve is held flat rather than extrapolated.</p>
+
+          <p>
+            <strong>The loaded curve.</strong> The unlinked curve splices two Bank of Israel sources
+            at one year. Out to 1y it is <strong>Makam</strong> — central bank bills, yields to
+            maturity, a daily observation (2026-07-30) across the 1- to 12-month bills. From 2y to 15y
+            it is the <em>Nominal rate of return derived from the zero coupon yield curve
+            estimation</em> (<code class="k">Statistics/shcd08_e.xls</code>), which publishes
+            <strong>monthly averages</strong> as alternating month-end (<em>Calendar</em>) and
+            mid-month (<em>CPI-dated</em>) rows. Averaged data suits anchor work, since contractual
+            anchors are themselves read off averaged yields rather than a single day's fix.
+          </p>
+          <p>
+            Three things follow from that. The two sources carry <strong>different dates and
+            averaging bases</strong>, so the join at 1y is not perfectly smooth — shcd08 reads 3.21%
+            there against Makam's 3.28%, and Makam wins the overlap as the short-term instrument and
+            the fresher observation. Anything past <strong>15y</strong> is held flat, which the fixed
+            long-term tracks flag. And the <strong>1-month Makam point sits about 45bp above its
+            neighbours</strong> — it is left in as published rather than quietly smoothed, but treat
+            the very front of the curve with care.
+          </p>
+          <p>
+            <strong>The CPI-linked curve</strong> is the matching <em>Real rate of return derived
+            from the zero coupon yield curve estimation</em>
+            (<code class="k">Statistics/shcd07_e.xls</code>) — the Galil curve, same workbook family,
+            same monthly-average basis, 1y to 20y, latest row 2026-07-15. It is
+            <strong>humped at the front</strong>: 1.70% at 1y, falling to 1.61% at 3y before rising
+            again. So a CPI-linked variable track projects a <em>falling</em> real anchor over the
+            next couple of years, the opposite shape to the unlinked one — the market expects real
+            short rates to come down. Below 1y it is held flat, which matters for the breakeven
+            column at short horizons, and beyond 20y the long fixed linked tracks flag it.
+          </p>
+          <p>
+            The two legs are <strong>observed on different dates</strong> — the nominal curve's short
+            end is a daily Makam print for 2026-07-30, the real curve a mid-month average dated
+            2026-07-15. Breakeven inflation is the difference between them, so it carries that
+            fortnight of timing mismatch. Each leg's own date is shown against it rather than a
+            single date for the page, because one number there would misstate the older leg.
+          </p>
+
+          <div class="notice" style="margin-top:16px">
+            <span>
+              <b>A forward rate is a price, not a forecast.</b> It is where the market will let you
+              lock a future rate today, and it embeds a term premium — so in an upward-sloping curve
+              forwards systematically sit above the average outcome that actually materialises. Read
+              these as the market-implied path, not as a prediction of Bank of Israel policy. Nothing
+              here is financial advice.
+            </span>
+          </div>
+        </div>
+      </details>
+
+      <p class="foot">
+        Refresh the curve from the Bank of Israel's zero-coupon yield curve estimation (nominal for
+        unlinked tracks, real for CPI-linked), published under Statistics → Bonds and MAKAM. Enter the
+        maturities you have; the calculator interpolates between them and reports which points it used.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Default curves.
+
+   NOMINAL: real data, two Bank of Israel sources spliced at 1 year.
+     · 1m–1y  Makam (central bank bills) yields to maturity, daily, 2026-07-30.
+              Makam owns the overlap at 1y: it is the short-term instrument and
+              the more recent observation.
+     · 2y–15y "Nominal rate of return derived from the zero coupon yield curve
+              estimation", MONTHLY AVERAGES (Statistics/shcd08_e.xls), latest
+              row 2026-07-15, CPI-dated average.
+   The two legs carry different dates and averaging bases, so the splice at 1y
+   is not perfectly smooth — shcd08 reads 3.21 there against makam's 3.28.
+
+   REAL (CPI-linked): real data too. "Real rate of return derived from the zero
+   coupon yield curve estimation" (Statistics/shcd07_e.xls) — the Galil curve,
+   same workbook family as shcd08, MONTHLY AVERAGES, latest row 2026-07-15,
+   CPI-dated average, 1y–20y. Note it is HUMPED at the front: 1.70 at 1y, down
+   to 1.61 at 3y, then rising. Real short rates are expected to fall.
+
+   The two legs are observed on different dates (nominal 2026-07-30 from makam,
+   real 2026-07-15), so breakeven inflation carries a small timing mismatch.
+   ============================================================ */
+const DEFAULT_NOMINAL = [
+  [0.083333, 3.72], [0.166667, 3.26], [0.25, 3.23], [0.333333, 3.30], [0.416667, 3.28], [0.5, 3.29],
+  [0.583333, 3.28], [0.666667, 3.27], [0.75, 3.27], [0.833333, 3.30], [0.916667, 3.28], [1, 3.28],
+  [2, 3.29], [3, 3.34], [4, 3.37], [5, 3.43], [7, 3.56], [10, 3.80],
+  [15, 4.06]
+];
+const DEFAULT_REAL = [
+  [1, 1.70], [2, 1.63], [3, 1.61], [4, 1.63], [5, 1.66], [7, 1.75],
+  [10, 1.92], [15, 2.10], [20, 2.20]
+];
+
+/**
+ * Where each built-in leg came from, so the page never overstates its data.
+ *
+ * `segs` is the machine-readable half of the same story: which maturities each
+ * file actually contributed to the merged curve. The zero-curve chart colours
+ * by it, so a spliced curve shows where one source stops and the next begins
+ * rather than presenting itself as one homogeneous measurement. Ranges are the
+ * maturities a source WON after merging — makam owns the 1y overlap, so
+ * shcd08's segment starts at 2y even though the file itself carries a 1y point.
+ */
+const BUILTIN_PROV = {
+  nominal: {
+    kind: "baked", label: "BOI zero-coupon curve + Makam", asOf: "2026-07-30",
+    parts: [
+      "makam.xlsx · 1m–1y · daily · 2026-07-30",
+      "shcd08_e.xls · 2y–15y · monthly avg · 2026-07-15"
+    ],
+    segs: [
+      { key: "makam", label: "Makam (T-bill) yields", file: "makam.xlsx",
+        from: 0.083333, to: 1, asOf: "2026-07-30" },
+      { key: "shcd08", label: "Government bond yields · nominal zero-coupon curve",
+        file: "shcd08_e.xls", from: 2, to: 15, asOf: "2026-07-15" }
+    ]
+  },
+  real: {
+    kind: "baked", label: "BOI real (Galil) zero-coupon curve", asOf: "2026-07-15",
+    parts: ["shcd07_e.xls · 1y–20y · monthly avg · 2026-07-15"],
+    segs: [{ key: "shcd07", label: "Government bond yields · CPI-linked (real) zero-coupon curve",
+             file: "shcd07_e.xls", from: 1, to: 20, asOf: "2026-07-15" }]
+  }
+};
+
+const PRIME_SPREAD = 1.5;   // prime = BOI policy rate + 1.5pp
+const SHORT_TENOR   = 0.25; // proxy tenor for the policy-rate path
+
+/**
+ * The series this page knows how to merge, and the order it merges them in.
+ *
+ * `order` is the merge precedence within a leg: LATER WINS on a shared
+ * maturity, which is why Makam comes second — it is the short-term instrument
+ * and the fresher observation, so it owns the 1y overlap where shcd08 also has
+ * a point. This mirrors the rule refresh-curve.mjs applies on the command line;
+ * the two must agree or the page and the CLI would produce different curves
+ * from the same files.
+ */
+const SOURCES = [
+  { key: "shcd08", leg: "nominal", order: 1, col: "--src-2", scheduled: true,
+    button: "BOI zero-coupon curve",
+    title: "Government bond yields · nominal zero-coupon curve",
+    hint: "Unlinked, 1–15y · monthly averages · shcd08" },
+  { key: "makam", leg: "nominal", order: 2, col: "--primary",
+    button: "MAKAM yields",
+    title: "Makam (T-bill) yields",
+    hint: "Unlinked short end, 1–12m · daily" },
+  { key: "shcd07", leg: "real", order: 1, col: "--project", scheduled: true,
+    button: "BOI real (Galil) curve",
+    title: "Government bond yields · CPI-linked (real) zero-coupon curve",
+    hint: "CPI-linked, 1–20y · monthly averages · shcd07" }
+];
+const SOURCE_BY_KEY = Object.fromEntries(SOURCES.map(s => [s.key, s]));
+
+/**
+ * Split the baked-in curves back into their per-source pieces, using the
+ * ranges each file was recorded as owning. The page then holds sources rather
+ * than merged curves, so replacing one file re-merges instead of overwriting
+ * the whole leg — loading a fresh Makam file must not wipe the long end.
+ */
+function seedSources() {
+  const out = {};
+  for (const leg of ["nominal", "real"]) {
+    const pts = leg === "nominal" ? DEFAULT_NOMINAL : DEFAULT_REAL;
+    for (const sg of BUILTIN_PROV[leg].segs || []) {
+      if (!sg.key) continue;
+      out[sg.key] = {
+        points: pts.filter(p => p[0] >= sg.from - 1e-9 && p[0] <= sg.to + 1e-9).map(p => p.slice()),
+        asOf: sg.asOf || BUILTIN_PROV[leg].asOf || null,
+        file: sg.file || null,
+        builtin: true
+      };
+    }
+  }
+  return out;
+}
+
+const state = {
+  nominal: DEFAULT_NOMINAL.map(r => r.slice()),
+  real:    DEFAULT_REAL.map(r => r.slice()),
+  src:     seedSources(),
+  calibrate: true,
+  // Once the user types their real contract anchor we must never overwrite it;
+  // until then it's just a default we're free to reseed from a loaded curve.
+  anchorTouched: false,
+  // Provenance is per leg: the nominal curve can be real BOI data while the
+  // CPI-linked one is still an estimate, and the page must say so.
+  prov: { nominal: { ...BUILTIN_PROV.nominal }, real: { ...BUILTIN_PROV.real } }
+};
+
+const $ = id => document.getElementById(id);
+
+/**
+ * Bank of Israel release calendar for the zero-coupon curve tables (shcd07 and
+ * shcd08). Two releases a month, alternating:
+ *
+ *   קלנדרי  Calendar  — the month-END average, published a couple of days into
+ *                       the following month
+ *   מדדי    CPI-dated — the MID-month average, published a few days after the
+ *                       15th of the same month
+ *
+ * Which is which matters for reading a file's date: the loaded curve is dated
+ * 2026-07-15 (CPI-dated), released on 2026-07-19; the Calendar row before it is
+ * dated 2026-06-30 and was released on 2026-07-02.
+ *
+ * Makam is a DAILY series on no such schedule, so this calendar does not apply
+ * to it and no staleness claim is made about it here.
+ */
+const PUBLICATIONS = [
+  ["2026-01-05", "Calendar"],  ["2026-01-19", "CPI-dated"],
+  ["2026-02-02", "Calendar"],  ["2026-02-17", "CPI-dated"],
+  ["2026-03-02", "Calendar"],  ["2026-03-18", "CPI-dated"],
+  ["2026-04-06", "Calendar"],  ["2026-04-19", "CPI-dated"],
+  ["2026-05-04", "Calendar"],  ["2026-05-18", "CPI-dated"],
+  ["2026-06-02", "Calendar"],  ["2026-06-17", "CPI-dated"],
+  ["2026-07-02", "Calendar"],  ["2026-07-19", "CPI-dated"],
+  ["2026-08-03", "Calendar"],  ["2026-08-17", "CPI-dated"],
+  ["2026-09-02", "Calendar"],  ["2026-09-17", "CPI-dated"],
+  ["2026-10-05", "Calendar"],  ["2026-10-19", "CPI-dated"],
+  ["2026-11-02", "Calendar"],  ["2026-11-17", "CPI-dated"],
+  ["2026-12-02", "Calendar"],  ["2026-12-17", "CPI-dated"],
+  ["2027-01-04", "Calendar"]
+].map(([date, type]) => ({ date, type }));
+
+/** Today, as an ISO date. Overridable so the staleness logic can be tested. */
+let TODAY_OVERRIDE = null;
+function today() {
+  if (TODAY_OVERRIDE) return TODAY_OVERRIDE;
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+/**
+ * Has the Bank of Israel published newer figures than the file in hand?
+ *
+ * The release that carried an observation dated D is the first one on or after
+ * D — an observation is always published within a few days of its date. Any
+ * release after that one which has already happened is data this page does not
+ * have.
+ *
+ * Returns null when no claim can be made: no date on the file, or a date past
+ * the end of the published calendar. Silence is the honest answer there; a
+ * "you are up to date" that is really "I ran out of calendar" is worse than
+ * nothing.
+ */
+function pubStatus(asOf, now) {
+  if (!asOf) return null;
+  now = now || today();
+  const last = PUBLICATIONS[PUBLICATIONS.length - 1];
+  if (asOf > last.date) return null;                    // beyond the calendar
+
+  const releasedAt = PUBLICATIONS.find(p => p.date >= asOf);
+  if (!releasedAt) return null;
+
+  const since = PUBLICATIONS.filter(p => p.date > releasedAt.date && p.date <= now);
+  const next = PUBLICATIONS.find(p => p.date > now);
+  return {
+    releasedAt,
+    missed: since,
+    latest: since.length ? since[since.length - 1] : null,
+    next: next || null,
+    stale: since.length > 0
+  };
+}
+
+/* ============================================================
+   Curve maths
+   ============================================================ */
+
+// Fritsch–Carlson monotone cubic slopes.
+function monoSlopes(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return [0];
+  const d = new Array(n - 1), m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d[i] = (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]);
+  m[0] = d[0];
+  for (let i = 1; i < n - 1; i++) m[i] = (d[i - 1] * d[i] <= 0) ? 0 : (d[i - 1] + d[i]) / 2;
+  m[n - 1] = d[n - 2];
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const tau = 3 / Math.sqrt(s); m[i] = tau * a * d[i]; m[i + 1] = tau * b * d[i]; }
+  }
+  return m;
+}
+
+/** Build an evaluator z(t) -> decimal rate from [[years, pct], ...]. */
+function buildCurve(points, mode) {
+  const clean = points
+    .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]) && p[0] > 0)
+    .sort((a, b) => a[0] - b[0]);
+
+  // Collapse duplicate maturities, last one wins.
+  const xs = [], ys = [];
+  for (const [t, r] of clean) {
+    if (xs.length && Math.abs(xs[xs.length - 1] - t) < 1e-9) ys[ys.length - 1] = r / 100;
+    else { xs.push(t); ys.push(r / 100); }
+  }
+  if (!xs.length) return null;
+
+  const slopes = mode === "mono" ? monoSlopes(xs, ys) : null;
+
+  function z(t) {
+    if (!(t > 0)) t = 1e-6;
+    if (t <= xs[0])              return ys[0];                    // flat extrapolation
+    if (t >= xs[xs.length - 1])  return ys[ys.length - 1];
+
+    let i = 0;
+    while (i < xs.length - 2 && t > xs[i + 1]) i++;
+    const x0 = xs[i], x1 = xs[i + 1], y0 = ys[i], y1 = ys[i + 1];
+    const h = x1 - x0, s = (t - x0) / h;
+
+    if (mode === "loglin") {
+      // linear in t·ln(1+z)  ==  linear in −ln(discount factor)
+      const a0 = x0 * Math.log1p(y0), a1 = x1 * Math.log1p(y1);
+      const a = a0 + (a1 - a0) * s;
+      return Math.expm1(a / t);
+    }
+    const m0 = slopes[i], m1 = slopes[i + 1];
+    const s2 = s * s, s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * y0 + (s3 - 2 * s2 + s) * h * m0 +
+           (-2 * s3 + 3 * s2) * y1 + (s3 - s2) * h * m1;
+  }
+
+  return { z, min: xs[0], max: xs[xs.length - 1], knots: xs.slice(), n: xs.length };
+}
+
+/** Forward zero rate for a loan starting at T years, running L years. */
+function forward(curve, T, L) {
+  if (!curve || !(L > 0)) return NaN;
+  if (T <= 1e-9) return curve.z(L);
+  const zT = curve.z(T), zTL = curve.z(T + L);
+  const growth = Math.pow(1 + zTL, T + L) / Math.pow(1 + zT, T);
+  return Math.pow(growth, 1 / L) - 1;
+}
+
+/** Level-payment monthly instalment, Israeli nominal-annual/12 convention. */
+function payment(balance, annualPct, years) {
+  const n = Math.round(years * 12);
+  if (!(n > 0) || !(balance > 0)) return NaN;
+  const i = annualPct / 100 / 12;
+  if (Math.abs(i) < 1e-12) return balance / n;
+  return balance * i / (1 - Math.pow(1 + i, -n));
+}
+
+/** A leg's observation date, falling back to the other leg's when it has none. */
+function curveAsOf(leg) {
+  const p = state.prov[leg] || {}, q = state.prov[leg === "nominal" ? "real" : "nominal"] || {};
+  return p.asOf || q.asOf || "";
+}
+
+function addMonths(iso, months) {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y) return "";
+  const base = new Date(Date.UTC(y, m - 1, d));
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(base.getUTCDate(), lastDay));
+  return target.toISOString().slice(0, 10);
+}
+
+/* ============================================================
+   Term-premium adjustment.
+
+   A forward rate is the expected future rate PLUS a term premium. Because the
+   premium grows with how far out you look, an upward-sloping curve pushes every
+   projected anchor up even when the market expects no rate change at all. These
+   methods subtract an estimate of that mechanical component. Each returns the
+   amount to deduct, in percentage points, and each is ZERO at T=0 — today's
+   anchor is observed, not forecast, so it must never be adjusted.
+
+   This is a transparent heuristic decomposition, not a term-structure model
+   (ACM / Kim-Wright estimate the premium from a fitted factor model). It is
+   deliberately simple enough to check by hand.
+   ============================================================ */
+
+/**
+ * Premium accrual per year, read off the far end of the curve. Beyond ~10y,
+ * expected policy changes are small — rates are assumed near neutral — so
+ * residual slope out there is mostly premium accrual.
+ */
+function longEndSlopeInfo(curve) {
+  if (!curve || curve.knots.length < 2) return { lambda: 0, from: null, to: null };
+  const k = curve.knots;
+  let i = k.length - 1, j = k.length - 2;
+  while (j > 0 && k[i] - k[j] < 2) j--;        // want at least a 2y span
+  const dt = k[i] - k[j];
+  if (!(dt > 0)) return { lambda: 0, from: null, to: null };
+  return {
+    lambda: (curve.z(k[i]) - curve.z(k[j])) / dt * 100,   // pp per year
+    from: k[j], to: k[i]
+  };
+}
+const longEndSlope = curve => longEndSlopeInfo(curve).lambda;
+
+const ADJ = {
+  none:   { label: "None", param: null },
+  slope:  { label: "Long-end slope", param: null },
+  fixed:  { label: "Fixed premium", param: "Premium (bp per year)" },
+  shrink: { label: "Shrink toward today", param: "Shrink (% of the rise)" }
+};
+
+const TRACKS = {
+  "var-unlinked": { label: "Variable, unlinked",   curve: "nominal", kind: "variable", real: false },
+  "var-linked":   { label: "Variable, CPI-linked", curve: "real",    kind: "variable", real: true  },
+  "fix-unlinked": { label: "Fixed, unlinked",      curve: "nominal", kind: "fixed",    real: false },
+  "fix-linked":   { label: "Fixed, CPI-linked",    curve: "real",    kind: "fixed",    real: true  },
+  "prime":        { label: "Prime",                curve: "nominal", kind: "prime",    real: false }
+};
+
+/* ============================================================
+   Model
+   ============================================================ */
+function compute() {
+  const trackKey = $("track").value;
+  const track = TRACKS[trackKey];
+  const mode = $("interp").value;
+
+  const nom  = buildCurve(state.nominal, mode);
+  const real = buildCurve(state.real, mode);
+  const own  = track.curve === "real" ? real : nom;
+
+  // Tenor whose rate the anchor is: reset interval, full term, or short-end proxy.
+  let tenorYears, tenorLabel;
+  if (track.kind === "variable") {
+    tenorYears = Number($("resetMonths").value) / 12;
+    tenorLabel = Number($("resetMonths").value) + "m reset";
+  } else if (track.kind === "fixed") {
+    tenorYears = Math.max(1, Number($("termYears").value) || 25);
+    tenorLabel = tenorYears + "y term";
+  } else {
+    tenorYears = SHORT_TENOR;
+    tenorLabel = "policy proxy";
+  }
+
+  const horizons = ($("horizons").value.match(/-?\d+(\.\d+)?/g) || [])
+    .map(Number).filter(n => n >= 0 && n <= 480);
+  const months = [...new Set([0, ...horizons])].sort((a, b) => a - b);
+
+  const statedAnchor = Number($("anchorToday").value);
+  const marginPct    = Number($("margin").value) || 0;
+  // The Date column runs from the curve's OWN observation date. It used to be a
+  // "valuation date" input, but it fed nothing except these labels — the
+  // forwards are read off the curve as published, so a date the user could move
+  // independently could only ever mislabel them.
+  const valDate      = curveAsOf(track.curve);
+  const principal    = Number($("principal").value) || 0;
+  const payYears     = Number($("payYears").value) || 0;
+
+  // Model's own "today" value for the anchor, in percent.
+  const rawToday = own
+    ? (track.kind === "prime"
+        ? forward(own, 0, SHORT_TENOR) * 100 + PRIME_SPREAD
+        : forward(own, 0, tenorYears) * 100)
+    : NaN;
+
+  const offset = (state.calibrate && Number.isFinite(statedAnchor) && Number.isFinite(rawToday))
+    ? statedAnchor - rawToday : 0;
+
+  const rows = months.map(m => {
+    const T = m / 12;
+    let raw = own ? forward(own, T, tenorYears) * 100 : NaN;
+    if (track.kind === "prime") raw = own ? forward(own, T, SHORT_TENOR) * 100 + PRIME_SPREAD : NaN;
+
+    const anchor = raw + offset;
+
+    // Breakeven inflation over the same forward window, from both curves.
+    let breakeven = NaN;
+    if (nom && real) {
+      const fN = forward(nom,  T, tenorYears);
+      const fR = forward(real, T, tenorYears);
+      if (Number.isFinite(fN) && Number.isFinite(fR)) breakeven = ((1 + fN) / (1 + fR) - 1) * 100;
+    }
+
+    const full = anchor + marginPct;
+    return {
+      months: m,
+      date: valDate ? addMonths(valDate, m) : "",
+      raw, anchor, full, breakeven,
+      pay: payment(principal, full, payYears)
+    };
+  });
+
+  // ---- term-premium adjustment -------------------------------------------
+  const adjMethod = $("adjMethod").value;
+  const adjParam = Number($("adjParam").value);
+  const slopeInfo = longEndSlopeInfo(own);          // pp per year, from the curve
+  const lambda = slopeInfo.lambda;
+  const baseAnchor = rows[0].anchor;
+
+  const adj = { method: adjMethod, param: adjParam, lambda, baseAnchor };
+
+  for (const r of rows) {
+    const d = Number.isFinite(r.anchor) ? deductionAt(r.months, r.anchor, adj) : 0;
+    r.deducted = d;
+    r.adjusted = r.anchor - d;
+    r.adjFull = r.adjusted + marginPct;
+    r.adjPay = payment(principal, r.adjFull, payYears);
+  }
+
+  const adjOn = adjMethod !== "none";
+  const base = rows[0];
+  const last = rows[rows.length - 1];
+
+  return { track, trackKey, tenorYears, tenorLabel, rows, base, last, offset,
+           nom, real, own, marginPct, statedAnchor, rawToday,
+           adjMethod, adjParam, adjOn, lambda, slopeInfo, adj };
+}
+
+/**
+ * Percentage points of term premium to strip at a horizon, given the raw
+ * forward anchor there. Every method returns 0 at months = 0 — today's anchor
+ * is observed, not forecast, so it is never adjusted. The charts sample this at
+ * ~120 points between horizons, so it has to be callable off the row objects.
+ */
+function deductionAt(months, rawAnchor, o) {
+  const T = months / 12;
+  const p = Number.isFinite(o.param) ? o.param : 0;
+  if (o.method === "slope")  return o.lambda * T;
+  if (o.method === "fixed")  return p / 100 * T;
+  if (o.method === "shrink") return p / 100 * (rawAnchor - o.baseAnchor);
+  return 0;
+}
+
+/* ============================================================
+   Formatting
+   ============================================================ */
+const pct = v => Number.isFinite(v) ? v.toFixed(2) + "%" : "—";
+const bp  = v => Number.isFinite(v) ? (v >= 0 ? "+" : "−") + Math.abs(Math.round(v * 100)) + " bp" : "—";
+const ils = v => Number.isFinite(v)
+  ? "₪" + Math.round(v).toLocaleString("en-US")
+  : "—";
+/** 0.0833 -> "1m", 1.5 -> "18m", 15 -> "15y". Sub-year maturities read as months. */
+const tenorLabel = t => {
+  if (!Number.isFinite(t)) return "—";
+  if (t < 1) return Math.round(t * 12) + "m";
+  return (Math.abs(t - Math.round(t)) < 0.01 ? Math.round(t) : t.toFixed(1)) + "y";
+};
+
+/** "Today" / "1 month" / "18 months" — a horizon of 1 must not read "1 months". */
+const horizonLabel = m => m === 0 ? "Today" : m + (m === 1 ? " month" : " months");
+
+const shortDate = iso => {
+  if (!iso) return "—";
+  const [y, m] = iso.split("-");
+  return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m) - 1] + " " + y;
+};
+
+/* ============================================================
+   Render
+   ============================================================ */
+function render() {
+  const M = compute();
+  renderHeadline(M);
+  renderTiles(M);
+  renderTable(M);
+  renderHints(M);
+  renderProvenance();
+  drawPath(M);
+  drawCurves(M);
+  drawSpark(M);
+  lastModel = M;
+}
+let lastModel = null;
+
+/* The masthead figure quotes whichever reading the tiles quote — showing the raw
+   forward up top and the adjusted one in the tile below reads as a discrepancy. */
+function renderHeadline(M) {
+  const { last, base } = M;
+  const shown = M.adjOn ? last.adjusted : last.anchor;
+  const d = shown - (M.adjOn ? base.adjusted : base.anchor);
+  $("hlValue").textContent = pct(shown);
+  $("hlValue").style.color = Math.abs(d) < 0.005 ? "var(--ink-2)"
+    : (d > 0 ? "var(--rising)" : "var(--falling)");
+  $("hlCaption").textContent = last.months === 0
+    ? "anchor today"
+    : "anchor in " + horizonLabel(last.months).toLowerCase() + " · " + bp(d) +
+      (M.adjOn ? " · adjusted" : "");
+}
+
+/**
+ * The bottom line, in three figures. Deliberately narrow: every one of these is
+ * also a cell in the table above, so the tiles exist to answer "what changed"
+ * at a glance, not to restate the table. Rate incl. margin, peak on path and
+ * the raw/adjusted split all live in the table and are not repeated here.
+ */
+function renderTiles(M) {
+  const { base, last, track, tenorLabel } = M;
+  const d = last.anchor - base.anchor;
+  const dir = Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "rising" : "falling");
+
+  const tiles = [
+    { lab: "Anchor today",  val: pct(base.anchor),  cls: "is-primary",
+      sub: track.label + " · " + tenorLabel },
+    { lab: last.months === 0 ? "No horizon set" : "In " + horizonLabel(last.months).toLowerCase(),
+      val: pct(M.adjOn ? last.adjusted : last.anchor),
+      cls: "is-project",
+      sub: shortDate(last.date) + " · " +
+           (M.adjOn ? "adjusted, raw " + pct(last.anchor) : bp(d)) }
+  ];
+
+  if (Number.isFinite(last.pay)) {
+    tiles.push({ lab: "Monthly payment", val: ils(M.adjOn ? last.adjPay : last.pay),
+      cls: dir === "rising" ? "is-rising" : dir === "falling" ? "is-falling" : "",
+      sub: "vs " + ils(base.pay) + " today" });
+  } else {
+    tiles.push({ lab: "Change", val: bp(d),
+      cls: dir === "rising" ? "is-rising" : dir === "falling" ? "is-falling" : "",
+      sub: '<span class="pill ' + dir + '">' + (dir === "flat" ? "flat path" : dir + " path") + "</span>" });
+  }
+
+  $("tiles").innerHTML = tiles.map(t =>
+    '<div class="tile"><span class="eyebrow">' + t.lab + '</span>' +
+    '<span class="tval ' + t.cls + '">' + t.val + '</span>' +
+    '<span class="tsub">' + t.sub + "</span></div>").join("");
+}
+
+function renderTable(M) {
+  const { rows, track, base, tenorLabel } = M;
+  // Breakeven is only shown once BOTH legs are real data. While one is the
+  // placeholder the number is an artefact of a made-up curve, and a column of
+  // those was pushing the honest columns off the right edge of the table.
+  const showBreakeven = !!(M.nom && M.real)
+    && state.prov.real.kind !== "builtin" && state.prov.nominal.kind !== "builtin";
+  const showPay = Number.isFinite(base.pay);
+  const anchorWord = track.real ? "Real anchor" : (track.kind === "prime" ? "Prime" : "Anchor");
+
+  // The card ships collapsed, so its summary has to say what is inside it —
+  // a closed heading that doesn't name its contents just reads as a dead row.
+  const nHoriz = rows.filter(r => r.months > 0).length;
+  $("projTitle").textContent = "Projected " + anchorWord.toLowerCase() +
+    " · " + nHoriz + (nHoriz === 1 ? " horizon" : " horizons");
+  $("projMeta").textContent = track.label + " · " + tenorLabel +
+    (state.calibrate ? " · calibrated" : " · raw curve");
+
+  const adjOn = M.adjOn;
+  const cols = [["Horizon", "lead"], ["Date", ""], [anchorWord + " (raw)", ""]];
+  if (adjOn) cols.push(["Adjusted", ""]);
+  cols.push(["Δ raw", ""]);
+  if (adjOn) cols.push(["Δ adj.", ""]);
+  cols.push(["Incl. margin", ""]);
+  if (showPay) cols.push(["Monthly", ""]);
+  // Breakeven needs both curves, so it inherits the weaker one's standing.
+  if (showBreakeven) cols.push(["Breakeven infl.", ""]);
+
+  $("projHead").innerHTML = cols.map(c => '<th scope="col">' + c[0] + "</th>").join("");
+
+  const cls = d => d > 0.005 ? "delta-up" : d < -0.005 ? "delta-down" : "";
+  $("projBody").innerHTML = rows.map(r => {
+    const d = r.anchor - base.anchor;
+    const da = r.adjusted - base.adjusted;
+    const cells = [
+      '<td class="lead">' + horizonLabel(r.months) + "</td>",
+      "<td>" + shortDate(r.date) + "</td>",
+      "<td><strong>" + pct(r.anchor) + "</strong></td>"
+    ];
+    if (adjOn) cells.push('<td class="is-adj"><strong>' + pct(r.adjusted) + "</strong></td>");
+    cells.push('<td class="' + (r.months === 0 ? "" : cls(d)) + '">' +
+               (r.months === 0 ? "—" : bp(d)) + "</td>");
+    if (adjOn) cells.push('<td class="' + (r.months === 0 ? "" : cls(da)) + '">' +
+                          (r.months === 0 ? "—" : bp(da)) + "</td>");
+    // Margin and payment carry both readings so neither is hidden behind a toggle.
+    cells.push("<td>" + pct(r.full) + (adjOn ? ' <span class="alt">' + pct(r.adjFull) + "</span>" : "") + "</td>");
+    if (showPay) cells.push("<td>" + ils(r.pay) +
+      (adjOn ? ' <span class="alt">' + ils(r.adjPay) + "</span>" : "") + "</td>");
+    if (showBreakeven) cells.push("<td>" + pct(r.breakeven) + "</td>");
+    return '<tr class="' + (r.months === 0 ? "is-today" : "") + '">' + cells.join("") + "</tr>";
+  }).join("");
+
+  const notes = [];
+  if (adjOn) notes.push("<b>Adjusted</b> strips an estimated term premium from the raw forward — " +
+    escapeHtml(adjDescription(M)) + ". Grey figures in the margin and payment columns are the " +
+    "adjusted readings. Today's row is never adjusted: it is observed, not forecast.");
+  if (showBreakeven) notes.push("<b>Breakeven inflation</b> is the gap between the unlinked and " +
+    "CPI-linked curves at the same horizon — the market's price for taking indexation risk.");
+  $("tableFoot").hidden = !notes.length;
+  $("tableFoot").innerHTML = notes.join("<br><br>");
+}
+
+/** Plain-language statement of exactly what is being subtracted. */
+function adjDescription(M) {
+  const p = Number(M.adjParam);
+  if (M.adjMethod === "slope") {
+    return "here " + (M.lambda * 100).toFixed(1) + " bp per year of horizon, read off the slope " +
+           "of this curve's far end";
+  }
+  if (M.adjMethod === "fixed") return "here " + (Number.isFinite(p) ? p : 0) + " bp per year of horizon";
+  if (M.adjMethod === "shrink") {
+    return "here the projected rise is shrunk " + (Number.isFinite(p) ? p : 0) + "% back toward " +
+           "today's level";
+  }
+  return "";
+}
+
+function renderHints(M) {
+  const isVar = M.track.kind === "variable";
+  $("wrapReset").hidden = !isVar;
+  // The term is what a FIXED track prices off, so it is required there and
+  // merely cosmetic elsewhere. Saying "optional" on both would be wrong.
+  const fixed = M.track.kind === "fixed";
+  $("termOpt").hidden = fixed;
+  $("termHint").textContent = fixed
+    ? "The tenor the fixed rate is read from on the curve — this is what the projection prices."
+    : "Not used for this track's anchor; shown for context only.";
+
+  const isPrime = M.track.kind === "prime";
+  $("anchorLab").textContent = isPrime ? "Prime today (%)"
+    : M.track.real ? "Real anchor today (%)" : "Anchor today (%)";
+  $("anchorHint").textContent = isPrime
+    ? "Currently 5.00% — the Bank of Israel rate of 3.50% plus the 1.5pp convention."
+    : "Your contract's current anchor, as quoted by the bank.";
+  $("marginLab").textContent = isPrime ? "Prime discount (%)" : "Bank margin (%)";
+
+  const off = M.offset;
+  const wide = Math.abs(off) > 0.75;   // >75bp says the anchor and curve disagree badly
+  $("calHint").innerHTML = state.calibrate
+    ? "Curve says " + pct(M.rawToday) + " today; your contract says " + pct(M.statedAnchor) +
+      ". Carrying " + bp(off) + " across all horizons." +
+      (wide ? ' <b style="color:var(--project)">That gap is large — check the anchor above is the ' +
+              (M.track.real ? "real" : "nominal") + " rate for this track, and that the curve is current.</b>" : "")
+    : "Showing unadjusted forwards. Your stated anchor is ignored.";
+
+  // The curve is held flat outside the maturities it actually contains. Say so —
+  // silently extrapolating is how a plausible number becomes a wrong one.
+  const cov = M.own;
+  const warn = [];
+  if (cov) {
+    const longest = (Math.max(...M.rows.map(r => r.months)) / 12) + M.tenorYears;
+    if (longest > cov.max + 1e-9) warn.push("flat beyond " + tenorLabel(cov.max));
+    if (M.tenorYears < cov.min - 1e-9) warn.push("flat below " + tenorLabel(cov.min));
+  }
+  if (warn.length) $("projMeta").textContent += " · " + warn.join(" · ");
+
+  // Slope-adjustment controls and readout.
+  const meta = ADJ[M.adjMethod] || ADJ.none;
+  $("wrapAdjParam").hidden = !meta.param;
+  if (meta.param) $("adjParamLab").textContent = meta.param;
+  const ro = $("adjReadout");
+  ro.classList.toggle("is-live", M.adjOn);
+  if (!M.adjOn) {
+    ro.innerHTML = "<span class='leg'>Showing <b>raw forwards</b>, term premium included</span>";
+  } else {
+    // perYr is bp/year, so perYr × years is bp — not pp.
+    const perYr = M.adjMethod === "shrink" ? null
+      : (M.adjMethod === "slope" ? M.lambda * 100 : Number(M.adjParam) || 0);
+    const maxM = Math.max(...M.rows.map(r => r.months));
+    const si = M.slopeInfo || {};
+    ro.innerHTML = "<span class='leg'>" + escapeHtml(adjDescription(M)) + "</span>" +
+      (M.adjMethod === "slope" && si.from != null
+        ? "<span class='parts'>↳ from the " + tenorLabel(si.from) + "→" + tenorLabel(si.to) +
+          " segment of this curve</span>"
+        : "") +
+      (perYr != null
+        ? "<span class='parts'>↳ " + Math.round(perYr * (maxM / 12)) +
+          " bp deducted at the " + maxM + "-month horizon</span>"
+        : "");
+  }
+
+  // Stale data outranks the coverage notes: every number on the page is read
+  // off these files, so "there is newer data" is the first thing to say.
+  const stale = SOURCES
+    .filter(d => d.scheduled && state.src[d.key])
+    .map(d => ({ d, ps: pubStatus(state.src[d.key].asOf) }))
+    .filter(x => x.ps && x.ps.stale);
+
+  // Prime reads a 3-month forward; a curve that starts at 1y cannot support it.
+  const shortGap = cov && M.track.kind === "prime" && cov.min > SHORT_TENOR + 1e-9;
+  $("coverageWarning").hidden =
+    !(stale.length || shortGap || (M.track.real && state.prov.real.kind === "builtin"));
+  if (!$("coverageWarning").hidden) {
+    $("coverageWarning").querySelector("span").innerHTML = stale.length
+      ? "<b>The Bank of Israel has published newer figures than the " +
+        (stale.length > 1 ? "curves" : "curve") + " loaded here.</b> " +
+        stale.map(x => escapeHtml(x.d.button) + " is dated " +
+          state.src[x.d.key].asOf + "; " + x.ps.missed.length +
+          (x.ps.missed.length > 1 ? " releases have" : " release has") +
+          " gone out since, most recently " + x.ps.latest.date +
+          " (" + x.ps.latest.type + " average)").join(". ") +
+        ". Download the current table and load it in the <em>Zero curve</em> panel — " +
+        "every figure here is read off these files."
+      : shortGap
+      ? "<b>This curve starts at " + tenorLabel(cov.min) + ", so it can't price a 3-month rate.</b> " +
+        "The prime path below is extrapolated flat from the " + tenorLabel(cov.min) + " point and is " +
+        "not meaningful. Load a short-end curve (Makam covers 1–12 months), or read the prime path " +
+        "from the Bank of Israel rate directly."
+      : "<b>The CPI-linked curve is a placeholder</b>, so this track's real anchors are an " +
+        "estimate rather than market data. Load the Galil zero curve to make them real.";
+  }
+}
+
+/* ============================================================
+   Charts
+   ============================================================ */
+function tok(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function setupCanvas(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return null;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  return { g, w, h };
+}
+
+/* ============================================================
+   Chart hover.
+
+   Each draw function publishes a hit map on its canvas:
+
+     cv.__hit = { pad, w, h, cols: [{ key, px, title, rows: [{name,col,text,py}] }] }
+
+   The pointer snaps to the nearest column, the chart is redrawn, a spike line
+   and rings are overlaid, and an HTML tooltip is positioned beside it. The
+   values in the tooltip are the model's own numbers, formatted the same way as
+   the table — never re-read off pixel positions.
+
+   What is tracked is the column's KEY, not the column object or its index: a
+   repaint from an unrelated input change rebuilds the hit map, and pixel
+   coordinates from the previous one would put the ring in the wrong place.
+   ============================================================ */
+const hoverKey = new WeakMap();   // canvas -> key of the column under the pointer
+
+/** Overlay + tooltip for whatever column is hovered. Safe to call every paint. */
+function paintHover(cv) {
+  const hit = cv.__hit;
+  const key = hoverKey.get(cv);
+  const col = (hit && key !== undefined) ? hit.cols.find(c => c.key === key) : null;
+  if (!col) { hideTip(cv); return; }
+  drawSpike(cv, hit, col);
+  showTip(cv, col);
+}
+
+function drawSpike(cv, hit, col) {
+  const g = cv.getContext("2d");   // transform is still the one setupCanvas set
+  const { pad, h } = hit;
+
+  g.save();
+  g.setLineDash([3, 3]);
+  g.strokeStyle = tok("--ink-3"); g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(Math.round(col.px) + 0.5, pad.t);
+  g.lineTo(Math.round(col.px) + 0.5, h - pad.b);
+  g.stroke();
+  g.restore();
+
+  for (const r of col.rows) {
+    if (!Number.isFinite(r.py)) continue;
+    g.beginPath(); g.arc(col.px, r.py, 5, 0, Math.PI * 2);
+    g.fillStyle = tok("--panel"); g.fill();
+    g.strokeStyle = r.col; g.lineWidth = 2; g.stroke();
+  }
+}
+
+function showTip(cv, col) {
+  const box = cv.parentElement;
+  let tip = box.querySelector(".tip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.className = "tip";
+    box.appendChild(tip);
+  }
+  tip.innerHTML = '<span class="tip-t">' + escapeHtml(col.title) + "</span>" +
+    col.rows.map(r =>
+      '<span class="tip-r"><i style="background:' + r.col + '"></i>' +
+      '<span class="tip-n">' + escapeHtml(r.name) + "</span>" +
+      '<b>' + escapeHtml(r.text) + "</b></span>").join("");
+  tip.hidden = false;
+
+  // Flip to the left of the spike when it would otherwise run off the panel.
+  const bw = box.clientWidth, tw = tip.offsetWidth;
+  let left = col.px + 14;
+  if (left + tw > bw - 4) left = col.px - 14 - tw;
+  tip.style.left = Math.max(4, left) + "px";
+
+  const ys = col.rows.map(r => r.py).filter(Number.isFinite);
+  const anchor = ys.length ? Math.min(...ys) : cv.__hit.pad.t;
+  tip.style.top = Math.max(4, Math.min(anchor - 10, box.clientHeight - tip.offsetHeight - 4)) + "px";
+}
+
+function hideTip(cv) {
+  const tip = cv.parentElement.querySelector(".tip");
+  if (tip) tip.hidden = true;
+}
+
+/**
+ * Wire pointer tracking to a canvas. redraw() must repaint the chart and
+ * refresh cv.__hit; the overlay is drawn on top of whatever it produces.
+ */
+function attachHover(cv, redraw) {
+  const move = e => {
+    const hit = cv.__hit;
+    if (!hit || !hit.cols.length) return;
+    const x = e.clientX - cv.getBoundingClientRect().left;
+    // A little slack past the plot edges so the first and last points are easy
+    // to reach; outside that, treat it as "not hovering anything".
+    if (x < hit.pad.l - 10 || x > hit.w - hit.pad.r + 10) { clear(); return; }
+
+    let best = hit.cols[0];
+    for (const c of hit.cols) if (Math.abs(c.px - x) < Math.abs(best.px - x)) best = c;
+    if (hoverKey.get(cv) === best.key) { showTip(cv, best); return; }
+
+    hoverKey.set(cv, best.key);
+    redraw();          // repaints the chart clean, then paints the overlay
+  };
+  const clear = () => {
+    if (!hoverKey.has(cv)) return;
+    hoverKey.delete(cv);
+    redraw();
+  };
+  cv.addEventListener("pointermove", move);
+  cv.addEventListener("pointerdown", move);
+  cv.addEventListener("pointerleave", clear);
+  cv.addEventListener("pointercancel", clear);
+}
+
+/** Pad a data range, then snap it outward to a round 1/2/2.5/5 x 10^n step. */
+function niceScale(lo, hi, targetSteps) {
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return { lo: 0, hi: 1, step: 0.25 };
+  if (hi - lo < 0.2) { const mid = (lo + hi) / 2; lo = mid - 0.1; hi = mid + 0.1; }
+  const pad = (hi - lo) * 0.15;
+  lo -= pad; hi += pad;
+  const raw = (hi - lo) / targetSteps;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  return { lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step };
+}
+
+function axes(g, w, h, pad, sc, yFmt, xTicks, xOf) {
+  const line = tok("--line"), soft = tok("--line-soft"), ink3 = tok("--ink-3");
+  g.font = '11px ' + tok("--mono").split(",")[0] + ", monospace";
+  g.textBaseline = "middle";
+
+  const yOf = v => pad.t + (h - pad.t - pad.b) * (1 - (v - sc.lo) / (sc.hi - sc.lo));
+  const eps = sc.step * 1e-6;
+  for (let v = sc.lo; v <= sc.hi + eps; v += sc.step) {
+    const y = Math.round(yOf(v));
+    g.strokeStyle = Math.abs(v - sc.lo) < eps ? line : soft;
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(pad.l, y + 0.5); g.lineTo(w - pad.r, y + 0.5); g.stroke();
+    g.fillStyle = ink3; g.textAlign = "right";
+    g.fillText(yFmt(v), pad.l - 8, y);
+  }
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (const t of xTicks) {
+    g.fillStyle = ink3;
+    g.fillText(t.label, xOf(t.v), h - pad.b + 8);
+  }
+}
+
+function drawPath(M) {
+  const cv = $("pathChart");
+  cv.__hit = null;
+  const c = setupCanvas(cv);
+  if (!c) return;
+  const { g, w, h } = c;
+  const pad = { l: 48, r: 16, t: 14, b: 28 };
+
+  const rows = M.rows.filter(r => Number.isFinite(r.anchor));
+  if (rows.length < 2) return;
+
+  // Dense curve so the path between requested horizons is visible.
+  const maxM = rows[rows.length - 1].months;
+  const dense = [];
+  for (let m = 0; m <= maxM; m += Math.max(1, Math.round(maxM / 120))) {
+    let v = M.track.kind === "prime"
+      ? forward(M.own, m / 12, SHORT_TENOR) * 100 + PRIME_SPREAD
+      : forward(M.own, m / 12, M.tenorYears) * 100;
+    if (Number.isFinite(v)) dense.push([m, v + M.offset]);
+  }
+
+  // The adjusted path, same shape less the premium accrual at each horizon.
+  const adjDense = !M.adjOn ? []
+    : dense.map(([m, v]) => [m, v - deductionAt(m, v, M.adj)]);
+
+  const vals = dense.map(d => d[1]).concat(rows.map(r => r.anchor), [M.rows[0].anchor],
+    adjDense.map(d => d[1]), M.adjOn ? rows.map(r => r.adjusted) : []);
+  const sc = niceScale(Math.min(...vals), Math.max(...vals), 4);
+  const xOf = m => pad.l + (w - pad.l - pad.r) * (maxM ? m / maxM : 0);
+  const yOf = v => pad.t + (h - pad.t - pad.b) * (1 - (v - sc.lo) / (sc.hi - sc.lo));
+
+  // Thin the x labels so they never collide on a crowded horizon list.
+  const minGap = 44;
+  const keep = [];
+  for (const r of rows) {
+    if (!keep.length || xOf(r.months) - xOf(keep[keep.length - 1].months) >= minGap ||
+        r === rows[rows.length - 1]) keep.push(r);
+  }
+  axes(g, w, h, pad, sc, v => v.toFixed(2), keep.map(r => ({
+    v: r.months, label: r.months === 0 ? "now" : r.months + "m"
+  })), xOf);
+
+  // Today's level as a reference.
+  const y0 = yOf(M.rows[0].anchor);
+  g.save();
+  g.setLineDash([4, 4]);
+  g.strokeStyle = tok("--primary-line"); g.lineWidth = 1;
+  g.beginPath(); g.moveTo(pad.l, y0); g.lineTo(w - pad.r, y0); g.stroke();
+  g.restore();
+
+  // Area under the projected path.
+  const proj = tok("--project");
+  g.beginPath();
+  g.moveTo(xOf(dense[0][0]), yOf(dense[0][1]));
+  for (const [m, v] of dense) g.lineTo(xOf(m), yOf(v));
+  g.lineTo(xOf(maxM), h - pad.b);
+  g.lineTo(xOf(0), h - pad.b);
+  g.closePath();
+  const grad = g.createLinearGradient(0, pad.t, 0, h - pad.b);
+  grad.addColorStop(0, tok("--project-soft"));
+  grad.addColorStop(1, "transparent");
+  g.fillStyle = grad; g.fill();
+
+  g.beginPath();
+  g.moveTo(xOf(dense[0][0]), yOf(dense[0][1]));
+  for (const [m, v] of dense) g.lineTo(xOf(m), yOf(v));
+  g.strokeStyle = proj; g.lineWidth = 2; g.lineJoin = "round"; g.stroke();
+
+  // The adjusted path sits under the raw one — same colour family, dashed, so the
+  // premium being removed reads as the gap between them.
+  const prim = tok("--primary");
+  if (adjDense.length > 1) {
+    g.save();
+    g.setLineDash([5, 4]);
+    g.beginPath();
+    adjDense.forEach((p, i) => i ? g.lineTo(xOf(p[0]), yOf(p[1])) : g.moveTo(xOf(p[0]), yOf(p[1])));
+    g.strokeStyle = prim; g.lineWidth = 2; g.lineJoin = "round"; g.stroke();
+    g.restore();
+  }
+
+  // Markers at the requested horizons; today gets the primary colour.
+  for (const r of rows) {
+    const isNow = r.months === 0;
+    g.beginPath(); g.arc(xOf(r.months), yOf(r.anchor), isNow ? 4.5 : 3.5, 0, Math.PI * 2);
+    g.fillStyle = isNow ? prim : proj; g.fill();
+    g.strokeStyle = tok("--panel"); g.lineWidth = 1.5; g.stroke();
+    if (M.adjOn && !isNow && Number.isFinite(r.adjusted)) {
+      g.beginPath(); g.arc(xOf(r.months), yOf(r.adjusted), 3, 0, Math.PI * 2);
+      g.fillStyle = prim; g.fill();
+      g.strokeStyle = tok("--panel"); g.lineWidth = 1.5; g.stroke();
+    }
+  }
+
+  // Label the endpoints.
+  const lastR = rows[rows.length - 1];
+  g.font = "600 12px " + tok("--mono").split(",")[0] + ", monospace";
+  g.textAlign = "right"; g.textBaseline = "bottom";
+  g.fillStyle = proj;
+  g.fillText(lastR.anchor.toFixed(2) + "%", xOf(lastR.months) - 6, yOf(lastR.anchor) - 6);
+  if (M.adjOn && Number.isFinite(lastR.adjusted)) {
+    g.fillStyle = prim; g.textBaseline = "top";
+    g.fillText(lastR.adjusted.toFixed(2) + "%", xOf(lastR.months) - 6, yOf(lastR.adjusted) + 5);
+  }
+
+  $("pathLegend").innerHTML =
+    '<span><i style="background:' + proj + '"></i>Raw forward ' +
+      (M.track.real ? "real anchor" : "anchor") + (state.calibrate ? " (calibrated)" : " (uncalibrated)") + "</span>" +
+    (M.adjOn ? '<span><i style="background:' + prim +
+      ';background-image:repeating-linear-gradient(90deg,' + prim + ' 0 5px,transparent 5px 9px)"></i>' +
+      "Adjusted — term premium removed</span>" : "") +
+    '<span><i style="background:' + prim + '"></i>Level today · ' + pct(M.rows[0].anchor) + "</span>";
+
+  // Hover readout: one column per plotted horizon, carrying the row's own
+  // numbers so the tooltip and the table can never disagree.
+  const showPay = Number.isFinite(M.base.pay);
+  cv.__hit = { pad, w, h, cols: rows.map(r => {
+    const d = r.anchor - M.base.anchor;
+    const tipRows = [{ name: "Raw", col: proj, text: pct(r.anchor), py: yOf(r.anchor) }];
+    if (M.adjOn && Number.isFinite(r.adjusted)) {
+      tipRows.push({ name: "Adjusted", col: prim, text: pct(r.adjusted), py: yOf(r.adjusted) });
+      tipRows.push({ name: "Premium out", col: "transparent",
+        text: (r.deducted * 100).toFixed(0) + " bp", py: NaN });
+    }
+    tipRows.push({ name: "vs today", col: "transparent",
+      text: r.months === 0 ? "—" : bp(d), py: NaN });
+    tipRows.push({ name: "Incl. margin", col: "transparent",
+      text: pct(M.adjOn ? r.adjFull : r.full), py: NaN });
+    if (showPay && Number.isFinite(r.pay)) tipRows.push({ name: "Monthly", col: "transparent",
+      text: ils(M.adjOn ? r.adjPay : r.pay), py: NaN });
+    return {
+      key: r.months,
+      px: xOf(r.months),
+      title: horizonLabel(r.months) + " · " + shortDate(r.date),
+      rows: tipRows
+    };
+  }) };
+  paintHover(cv);
+}
+
+/* ---- which file each stretch of a curve came from ------------------------ */
+
+/**
+ * Which of the three known series a file is. Mirrors sourceKey() in
+ * refresh-curve.mjs — the page and the CLI have to agree, or a curve.json the
+ * CLI wrote would come back unattributed.
+ */
+function sourceKeyOf(file) {
+  const f = String(file).toLowerCase();
+  if (f.includes("makam")) return "makam";
+  if (f.includes("shcd08") || f.includes("shahar")) return "shcd08";
+  if (f.includes("shcd07") || f.includes("galil")) return "shcd07";
+  return null;
+}
+
+/**
+ * The chart name a series is published under, from the file it arrived in.
+ * A legend reading "shcd08_e.xls" names a download, not a measurement — the
+ * reader needs to know these are government bond yields off the zero-coupon
+ * curve estimation. Filenames stay in the provenance block, where they belong.
+ */
+function seriesTitle(file, leg) {
+  const f = String(file).toLowerCase();
+  if (f.includes("makam") || f.includes("\u05de\u05db\u05dd")) return "Makam (T-bill) yields";
+  if (f.includes("shcd08")) return "Government bond yields \u00b7 nominal zero-coupon curve";
+  if (f.includes("shcd07")) return "Government bond yields \u00b7 CPI-linked (real) zero-coupon curve";
+  if (f.includes("galil") || f.includes("\u05d2\u05dc\u05d9\u05dc")) return "Government bond yields \u00b7 CPI-linked (real) zero-coupon curve";
+  if (f.includes("shahar") || f.includes("\u05e9\u05d7\u05e8")) return "Government bond yields \u00b7 nominal zero-coupon curve";
+  // Unknown file: name the leg rather than inventing a description of it.
+  return (leg === "real" ? "CPI-linked (real)" : "Nominal") + " zero curve \u00b7 " + file;
+}
+
+/** Compact form for the hover card, where the leg is already named beside it. */
+function seriesShort(seg) {
+  const f = String(seg.file || seg.label || "").toLowerCase();
+  if (f.includes("makam") || /makam/i.test(seg.label || "")) return "Makam";
+  if (/zero.?coupon/i.test(seg.label || "") || f.includes("shcd")) return "zero-coupon curve";
+  return seg.label || "source";
+}
+
+/** Colour ramp per leg: the leg's own hue first, then a companion for a second
+ *  source. Cool hues stay nominal, warm stay real, so the leg is still legible
+ *  once the sources are told apart. */
+const SEG_COLS = {
+  nominal: ["--primary", "--src-2"],
+  real:    ["--project", "--src-4"]
+};
+
+/** Source segments for a leg, coloured. Empty when the curve has no recorded
+ *  provenance — a pasted or hand-typed curve is one anonymous source. */
+function segsFor(leg, fallbackCol) {
+  const segs = (state.prov[leg] && state.prov[leg].segs) || [];
+  const ramp = SEG_COLS[leg] || SEG_COLS.nominal;
+  return segs
+    .filter(s => Number.isFinite(s.from) && Number.isFinite(s.to))
+    .map((s, i) => {
+      // A known series keeps its own colour whatever order it merged in or
+      // which other sources happen to be loaded; colouring by position would
+      // silently reassign hues when a source is added or removed.
+      const def = s.key && SOURCE_BY_KEY[s.key];
+      return { ...s, col: tok((def && def.col) || ramp[i % ramp.length]) || fallbackCol };
+    });
+}
+
+/** Index of the segment owning maturity t, or -1. Later sources win, matching
+ *  the merge rule in refresh-curve.mjs. */
+function segAt(segs, t) {
+  for (let i = segs.length - 1; i >= 0; i--) {
+    if (t >= segs[i].from - 1e-9 && t <= segs[i].to + 1e-9) return i;
+  }
+  return -1;
+}
+
+/**
+ * Index of the segment nearest maturity t. Used for the held-flat regions
+ * outside the data: those extrapolate ONE source, so they belong to it and are
+ * drawn in its colour (dashed, because they are still not data). Neutral grey
+ * is reserved for interior gaps, where the curve really is bridging two files.
+ */
+function segNear(segs, t) {
+  let best = -1, bestD = Infinity;
+  for (let i = 0; i < segs.length; i++) {
+    const d = t < segs[i].from ? segs[i].from - t : t > segs[i].to ? t - segs[i].to : 0;
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+function drawCurves(M) {
+  const cv = $("curveChart");
+  cv.__hit = null;
+  const c = setupCanvas(cv);
+  if (!c) return;
+  const { g, w, h } = c;
+  const pad = { l: 48, r: 16, t: 14, b: 28 };
+
+  const curves = [];
+  if (M.nom)  curves.push({ c: M.nom,  leg: "nominal", col: tok("--primary"), name: "Unlinked (nominal)" });
+  if (M.real) curves.push({ c: M.real, leg: "real",    col: tok("--project"), name: "CPI-linked (real)" });
+  if (!curves.length) return;
+
+  const tMax = Math.min(30, Math.max(...curves.map(x => x.c.max)));
+  const series = curves.map(x => {
+    const pts = [];
+    for (let i = 0; i <= 160; i++) {
+      const t = 0.08 + (tMax - 0.08) * i / 160;
+      pts.push([t, x.c.z(t) * 100]);
+    }
+    return { ...x, pts };
+  });
+
+  const all = series.flatMap(s => s.pts.map(p => p[1]));
+  const sc = niceScale(Math.min(...all), Math.max(...all), 4);
+
+  // sqrt x-scale: gives the short end, where mortgages live, room to breathe.
+  const xs = t => Math.sqrt(t);
+  const xOf = t => pad.l + (w - pad.l - pad.r) * (xs(t) - xs(0.08)) / (xs(tMax) - xs(0.08));
+  const yOf = v => pad.t + (h - pad.t - pad.b) * (1 - (v - sc.lo) / (sc.hi - sc.lo));
+
+  const ticks = [0.25, 1, 2, 3, 5, 10, 20, 30].filter(t => t <= tMax)
+    .map(t => ({ v: t, label: t < 1 ? Math.round(t * 12) + "m" : t + "y" }));
+  axes(g, w, h, pad, sc, v => v.toFixed(2), ticks, xOf);
+
+  // Shade the forward window actually being read: [T_max, T_max + tenor].
+  const maxH = Math.max(...M.rows.map(r => r.months)) / 12;
+  const a = Math.max(0.08, maxH), b = Math.min(tMax, maxH + M.tenorYears);
+  if (b > a) {
+    g.fillStyle = tok("--project-soft");
+    g.fillRect(xOf(a), pad.t, xOf(b) - xOf(a), h - pad.t - pad.b);
+    g.strokeStyle = tok("--project-line"); g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(xOf(a) + 0.5, pad.t); g.lineTo(xOf(a) + 0.5, h - pad.b);
+    g.moveTo(xOf(b) - 0.5, pad.t); g.lineTo(xOf(b) - 0.5, h - pad.b);
+    g.stroke();
+    g.font = "10px " + tok("--mono").split(",")[0] + ", monospace";
+    g.fillStyle = tok("--project"); g.textAlign = "center"; g.textBaseline = "top";
+    g.fillText("forward window", (xOf(a) + xOf(b)) / 2, pad.t + 2);
+  }
+
+  let anyExtrap = false, anySplice = false;
+  const bridgeCol = tok("--ink-3");
+  for (const s of series) {
+    const segs = segsFor(s.leg, s.col);
+    // A point's style is (which source owns it) x (data or held flat). The run
+    // is flushed whenever either changes, so each source draws in its own
+    // colour and the stretch between two sources is visibly neither's.
+    const inside = t => t >= s.c.min - 1e-9 && t <= s.c.max + 1e-9;
+    const keyOf = p => (inside(p[0]) ? "d" : "x") + ":" + segAt(segs, p[0]);
+    let run = [], runKey = null;
+    const flush = () => {
+      if (run.length < 2) { run = []; return; }
+      const [mode, si] = runKey.split(":");
+      const held = mode === "x";
+      // Held flat extrapolates one source, so it keeps that source's colour and
+      // says "not data" with the dash instead.
+      const seg = segs[held && +si < 0 ? segNear(segs, run[0][0]) : +si];
+      g.save();
+      if (held) { g.setLineDash([3, 3]); anyExtrap = true; }
+      else if (!seg && segs.length) { anySplice = true; }
+      g.beginPath();
+      run.forEach((p, i) => i ? g.lineTo(xOf(p[0]), yOf(p[1])) : g.moveTo(xOf(p[0]), yOf(p[1])));
+      // Grey means "we know the sources and this stretch belongs to none of
+      // them". With no provenance at all there is no splice to point at, so the
+      // leg keeps its own colour.
+      g.strokeStyle = seg ? seg.col : (segs.length ? bridgeCol : s.col);
+      g.lineWidth = 2; g.lineJoin = "round"; g.stroke();
+      g.restore();
+      run = [];
+    };
+    for (const p of s.pts) {
+      const k = keyOf(p);
+      if (runKey === null) runKey = k;
+      else if (k !== runKey) { run.push(p); flush(); runKey = k; }
+      run.push(p);
+    }
+    flush();
+
+    for (const k of s.c.knots) {
+      if (k < 0.08 || k > tMax) continue;
+      const seg = segs[segAt(segs, k)] || segs[segNear(segs, k)];
+      g.beginPath(); g.arc(xOf(k), yOf(s.c.z(k) * 100), 2.6, 0, Math.PI * 2);
+      g.fillStyle = seg ? seg.col : (segs.length ? bridgeCol : s.col); g.fill();
+    }
+  }
+
+  // One legend entry per SOURCE, not per leg — that is what the colours mean now.
+  $("curveLegend").innerHTML = series.flatMap(s => {
+    const segs = segsFor(s.leg, s.col);
+    if (!segs.length) return ['<span><i style="background:' + s.col + '"></i>' + s.name +
+      " · " + s.c.n + " points · " + tenorLabel(s.c.min) + "–" + tenorLabel(s.c.max) + "</span>"];
+    return segs.map(sg => '<span><i style="background:' + sg.col + '"></i>' +
+      escapeHtml(sg.label) + " · " + tenorLabel(sg.from) + "–" + tenorLabel(sg.to) + "</span>");
+  }).join("") + '<span style="color:var(--ink-3)">dots are entered maturities · x-axis is √t' +
+    (anySplice ? " · grey = interpolated across the splice" : "") +
+    (anyExtrap ? " · dashed = held flat, not data" : "") + "</span>";
+
+  // Hover readout: one column per entered maturity, across both curves. A curve
+  // that has no knot there still reports its value, flagged as read off the
+  // interpolation rather than entered — the distinction the dashed/solid line
+  // makes visually, said in words.
+  const knots = [...new Set(series.flatMap(s => s.c.knots))]
+    .filter(t => t >= 0.08 && t <= tMax).sort((a, b) => a - b);
+  cv.__hit = { pad, w, h, cols: knots.map(t => ({
+    key: t,
+    px: xOf(t),
+    title: tenorLabel(t) + " maturity",
+    rows: series.map(s => {
+      const entered = s.c.knots.some(k => Math.abs(k - t) < 1e-9);
+      const held = t < s.c.min - 1e-9 || t > s.c.max + 1e-9;
+      const segs = segsFor(s.leg, s.col);
+      const seg = segs[segAt(segs, t)] || (held ? segs[segNear(segs, t)] : undefined);
+      // Name the file an entered point came from — the whole point of the
+      // colouring is that these maturities are different measurements.
+      const where = entered ? (seg ? " · " + seriesShort(seg) : "")
+                  : held ? " · held flat"
+                  : (seg || !segs.length) ? " · interpolated" : " · between sources";
+      return {
+        name: s.name.replace(/ \(.*\)$/, "") + where,
+        col: seg ? seg.col : (segs.length && !entered ? tok("--ink-3") : s.col),
+        text: pct(s.c.z(t) * 100),
+        py: yOf(s.c.z(t) * 100)
+      };
+    })
+  })) };
+  paintHover(cv);
+}
+
+function drawSpark(M) {
+  const cv = $("sparkStrip"), c = setupCanvas(cv);
+  if (!c) return;
+  const { g, w, h } = c;
+  const rows = M.rows.filter(r => Number.isFinite(r.anchor));
+  if (rows.length < 2) return;
+
+  // Traces the same path the masthead figure quotes — adjusted when the
+  // adjustment is on, so the sparkline's endpoint is the number beside it.
+  const maxM = rows[rows.length - 1].months || 1;
+  const pts = [];
+  for (let m = 0; m <= maxM; m += Math.max(1, Math.round(maxM / 60))) {
+    let v = M.track.kind === "prime"
+      ? forward(M.own, m / 12, SHORT_TENOR) * 100 + PRIME_SPREAD
+      : forward(M.own, m / 12, M.tenorYears) * 100;
+    if (!Number.isFinite(v)) continue;
+    v += M.offset;
+    pts.push([m, M.adjOn ? v - deductionAt(m, v, M.adj) : v]);
+  }
+  if (pts.length < 2) return;
+
+  const vs = pts.map(p => p[1]);
+  const lo = Math.min(...vs), hi = Math.max(...vs);
+  const span = (hi - lo) || 0.2;
+  const xOf = m => 2 + (w - 4) * m / maxM;
+  const yOf = v => h - 8 - (h - 18) * (v - (lo - span * 0.25)) / (span * 1.5);
+
+  g.beginPath();
+  pts.forEach((p, i) => i ? g.lineTo(xOf(p[0]), yOf(p[1])) : g.moveTo(xOf(p[0]), yOf(p[1])));
+  g.lineTo(xOf(maxM), h); g.lineTo(xOf(0), h); g.closePath();
+  g.fillStyle = tok("--project-soft"); g.fill();
+
+  g.beginPath();
+  pts.forEach((p, i) => i ? g.lineTo(xOf(p[0]), yOf(p[1])) : g.moveTo(xOf(p[0]), yOf(p[1])));
+  g.strokeStyle = tok("--project"); g.lineWidth = 1.75; g.lineJoin = "round"; g.stroke();
+
+  const e = pts[pts.length - 1];
+  g.beginPath(); g.arc(xOf(e[0]), yOf(e[1]), 3, 0, Math.PI * 2);
+  g.fillStyle = tok("--project"); g.fill();
+}
+
+/* ============================================================
+   Curve editor.
+
+   The curve is shown as a chart, not a table of number inputs: the chart is the
+   readable form, and a second copy of the same numbers alongside the chart and
+   the text box was one representation too many. The text box is the editable
+   form, seeded from whatever curve is loaded — so nothing is lost, it is just
+   not on screen three times.
+   ============================================================ */
+function pasteLeg() { return $("pasteLeg").value === "real" ? "real" : "nominal"; }
+function curveRows() { return state[pasteLeg()]; }
+
+/** Mirror the live curve into the text box, unless the user is mid-edit there. */
+function renderCurveEditor() {
+  const box = $("pasteBox");
+  if (document.activeElement === box) return;
+  box.value = curveRows()
+    .map(r => tenorLabel(r[0]).padEnd(5) + "  " + (Math.round(r[1] * 1e4) / 1e4))
+    .join("\n");
+  box.removeAttribute("aria-invalid");
+}
+
+/**
+ * xls-lite — read the cells of an Excel workbook with no dependencies.
+ *
+ * Enough of BIFF8 (.xls) and OOXML (.xlsx) to recover a sheet as a grid of
+ * strings / numbers / Dates. That is all the curve parser needs: a header row
+ * of maturities and a last data row. Written because the Bank of Israel
+ * publishes these tables as .xls, and a page that cannot read them would send
+ * every user through a spreadsheet round-trip first.
+ *
+ * Not a general Excel implementation. No formulas beyond cached results, no
+ * styling, no charts. It is deliberately small enough to audit.
+ *
+ * Exported shape matches what the page's parser already consumes:
+ *   [{ name, rows: [[cell, ...], ...] }, ...]
+ */
+
+/* ============================================================
+   OLE2 / Compound File Binary — the container .xls lives in
+   ============================================================ */
+function readCFB(buf) {
+  const d = new DataView(buf);
+  const u8 = new Uint8Array(buf);
+  const sig = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
+  for (let i = 0; i < 8; i++) if (u8[i] !== sig[i]) throw new Error("not an OLE2 file");
+
+  const sectorSize = 1 << d.getUint16(0x1E, true);
+  const miniSize   = 1 << d.getUint16(0x20, true);
+  const nFAT       = d.getUint32(0x2C, true);
+  const dirStart   = d.getUint32(0x30, true);
+  const miniCutoff = d.getUint32(0x38, true);
+  const miniFATSt  = d.getUint32(0x3C, true);
+  const nMiniFAT   = d.getUint32(0x40, true);
+  const difatStart = d.getUint32(0x44, true);
+  const nDIFAT     = d.getUint32(0x48, true);
+
+  const off = s => (s + 1) * sectorSize;
+
+  // DIFAT: 109 entries in the header, the rest chained through extra sectors.
+  const difat = [];
+  for (let i = 0; i < 109; i++) {
+    const v = d.getUint32(0x4C + i * 4, true);
+    if (v === 0xFFFFFFFF) break;
+    difat.push(v);
+  }
+  let ds = difatStart;
+  for (let n = 0; n < nDIFAT && ds !== 0xFFFFFFFE && ds !== 0xFFFFFFFF; n++) {
+    const base = off(ds);
+    const per = sectorSize / 4 - 1;
+    for (let i = 0; i < per; i++) {
+      const v = d.getUint32(base + i * 4, true);
+      if (v !== 0xFFFFFFFF) difat.push(v);
+    }
+    ds = d.getUint32(base + per * 4, true);
+  }
+
+  const readChain = (arr, start) => {
+    const out = [];
+    let s = start, guard = 0;
+    while (s !== 0xFFFFFFFE && s !== 0xFFFFFFFF && s < arr.length && guard++ < 1e6) {
+      out.push(s);
+      s = arr[s];
+    }
+    return out;
+  };
+
+  // FAT
+  const fat = new Uint32Array(difat.length * (sectorSize / 4));
+  difat.slice(0, nFAT || difat.length).forEach((sec, i) => {
+    const base = off(sec);
+    for (let j = 0; j < sectorSize / 4; j++) fat[i * (sectorSize / 4) + j] = d.getUint32(base + j * 4, true);
+  });
+
+  const catSectors = (sectors, size) => {
+    const out = new Uint8Array(sectors.length * sectorSize);
+    sectors.forEach((s, i) => out.set(u8.subarray(off(s), off(s) + sectorSize), i * sectorSize));
+    return size == null ? out : out.subarray(0, size);
+  };
+
+  // miniFAT
+  const miniFATBytes = catSectors(readChain(fat, miniFATSt), nMiniFAT * sectorSize);
+  const miniFAT = new Uint32Array(miniFATBytes.buffer, miniFATBytes.byteOffset,
+    Math.floor(miniFATBytes.byteLength / 4));
+
+  // Directory
+  const dirBytes = catSectors(readChain(fat, dirStart));
+  const dv = new DataView(dirBytes.buffer, dirBytes.byteOffset, dirBytes.byteLength);
+  const entries = [];
+  for (let i = 0; i + 128 <= dirBytes.length; i++) {
+    const b = i * 128;
+    if (b + 128 > dirBytes.length) break;
+    const nameLen = dv.getUint16(b + 0x40, true);
+    if (!nameLen) continue;
+    let name = "";
+    for (let j = 0; j < nameLen - 2; j += 2) name += String.fromCharCode(dv.getUint16(b + j, true));
+    entries.push({
+      name,
+      type: dv.getUint8(b + 0x42),
+      start: dv.getUint32(b + 0x74, true),
+      size: dv.getUint32(b + 0x78, true)
+    });
+  }
+
+  const root = entries.find(e => e.type === 5);
+  const miniStream = root ? catSectors(readChain(fat, root.start), root.size) : new Uint8Array(0);
+
+  const streamOf = e => {
+    if (e.size < miniCutoff) {
+      const chain = readChain(miniFAT, e.start);
+      const out = new Uint8Array(chain.length * miniSize);
+      chain.forEach((s, i) => out.set(miniStream.subarray(s * miniSize, (s + 1) * miniSize), i * miniSize));
+      return out.subarray(0, e.size);
+    }
+    return catSectors(readChain(fat, e.start), e.size);
+  };
+
+  return { entries, streamOf };
+}
+
+/* ============================================================
+   BIFF8 record stream
+   ============================================================ */
+const DATE_FMT_IDS = new Set([14, 15, 16, 17, 22, 27, 30, 36, 45, 46, 47, 50, 57]);
+
+/** Strip quoted literals and colour/condition blocks, then look for date codes. */
+function isDateFormat(fmt) {
+  if (!fmt) return false;
+  const bare = String(fmt).replace(/\\[\s\S]/g, "").replace(/"[^"]*"/g, "").replace(/\[[^\]]*\]/g, "");
+  return /[ymdhs]/i.test(bare) && !/^[^ymdhs]*$/i.test(bare);
+}
+
+/** Excel serial -> Date (UTC). 1900 system, including its phantom leap day. */
+function serialToDate(v) {
+  const days = Math.floor(v);
+  const ms = Math.round((v - days) * 86400000);
+  // Serial 60 is Excel's non-existent 1900-02-29; everything after it is off by one.
+  const epoch = Date.UTC(1899, 11, 31);
+  return new Date(epoch + (days - (days > 59 ? 1 : 0)) * 86400000 + ms);
+}
+
+function parseBIFF(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let p = 0;
+
+  const sheets = [];        // { name, bofPos }
+  const sst = [];
+  const xfFmt = [];         // xf index -> format id
+  const fmtStr = new Map(); // format id -> format string
+  let cur = null;           // current worksheet being filled
+  const grids = new Map();  // bofPos -> rows
+
+  /** Read one BIFF8 unicode string starting at `at`; returns [text, bytesUsed]. */
+  const readStr = (at, cchIn) => {
+    let q = at;
+    const cch = cchIn != null ? cchIn : dv.getUint16(q, true);
+    if (cchIn == null) q += 2;
+    const flags = dv.getUint8(q); q += 1;
+    const wide = flags & 0x01, rich = flags & 0x08, ext = flags & 0x04;
+    let runs = 0, extSz = 0;
+    if (rich) { runs = dv.getUint16(q, true); q += 2; }
+    if (ext)  { extSz = dv.getUint32(q, true); q += 4; }
+    let s = "";
+    for (let i = 0; i < cch; i++) {
+      if (wide) { s += String.fromCharCode(dv.getUint16(q, true)); q += 2; }
+      else      { s += String.fromCharCode(dv.getUint8(q)); q += 1; }
+    }
+    q += runs * 4 + extSz;
+    return [s, q - at];
+  };
+
+  const put = (row, col, val) => {
+    if (!cur) return;
+    while (cur.length <= row) cur.push([]);
+    const r = cur[row];
+    while (r.length <= col) r.push(null);
+    r[col] = val;
+  };
+
+  const numCell = (row, col, xf, v) => {
+    const fmt = fmtStr.get(xfFmt[xf]);
+    const isDate = DATE_FMT_IDS.has(xfFmt[xf]) || isDateFormat(fmt);
+    put(row, col, isDate && v > 0 ? serialToDate(v) : v);
+  };
+
+  const rkToNum = rk => {
+    const isInt = rk & 0x02, div100 = rk & 0x01;
+    let v;
+    if (isInt) v = rk >> 2;
+    else {
+      const b = new ArrayBuffer(8), bd = new DataView(b);
+      // RK carries the HIGH 32 bits of the IEEE double, so it must land in the
+      // first four bytes of a big-endian read — the low half stays zero.
+      bd.setUint32(0, rk & 0xFFFFFFFC);
+      v = bd.getFloat64(0);
+    }
+    return div100 ? v / 100 : v;
+  };
+
+  while (p + 4 <= bytes.length) {
+    const id = dv.getUint16(p, true);
+    const len = dv.getUint16(p + 2, true);
+    const body = p + 4;
+    if (body + len > bytes.length) break;
+
+    switch (id) {
+      case 0x0809: {                               // BOF
+        const sub = dv.getUint16(body + 2, true);
+        if (sub === 0x0010) { cur = []; grids.set(p, cur); }
+        break;
+      }
+      case 0x000A: cur = null; break;              // EOF
+      case 0x0085: {                               // BOUNDSHEET
+        // pos(4) hidden(1) type(1) then a short unicode string: cch as ONE byte,
+        // so readStr is handed the flags byte and the count separately.
+        const pos = dv.getUint32(body, true);
+        const [nm] = readStr(body + 7, dv.getUint8(body + 6));
+        sheets.push({ name: nm, bofPos: pos });
+        break;
+      }
+      case 0x041E: {                               // FORMAT
+        const ifmt = dv.getUint16(body, true);
+        const [s] = readStr(body + 2);
+        fmtStr.set(ifmt, s);
+        break;
+      }
+      case 0x00E0: xfFmt.push(dv.getUint16(body + 2, true)); break;   // XF
+      case 0x00FC: {                               // SST (+ CONTINUEs)
+        // Gather this record and every CONTINUE that follows it, keeping the
+        // boundaries: a string can straddle one, and the flags byte restarts.
+        const chunks = [{ off: body, len }];
+        let q = p + 4 + len;
+        while (q + 4 <= bytes.length && dv.getUint16(q, true) === 0x003C) {
+          const cl = dv.getUint16(q + 2, true);
+          chunks.push({ off: q + 4, len: cl });
+          q += 4 + cl;
+        }
+        const total = chunks.reduce((a, c) => a + c.len, 0);
+        const flat = new Uint8Array(total);
+        let w = 0;
+        for (const c of chunks) { flat.set(bytes.subarray(c.off, c.off + c.len), w); w += c.len; }
+        // Boundaries in flat coordinates, so the reader can restart flags.
+        const bounds = [];
+        let acc = 0;
+        for (const c of chunks) { acc += c.len; bounds.push(acc); }
+        readSST(flat, bounds, sst);
+        p = q;                                     // skip the CONTINUEs we consumed
+        continue;
+      }
+      case 0x00FD: {                               // LABELSST
+        const row = dv.getUint16(body, true), col = dv.getUint16(body + 2, true);
+        put(row, col, sst[dv.getUint32(body + 6, true)] ?? "");
+        break;
+      }
+      case 0x0204: {                               // LABEL
+        const row = dv.getUint16(body, true), col = dv.getUint16(body + 2, true);
+        const [s] = readStr(body + 6);
+        put(row, col, s);
+        break;
+      }
+      case 0x0203: {                               // NUMBER
+        const row = dv.getUint16(body, true), col = dv.getUint16(body + 2, true);
+        numCell(row, col, dv.getUint16(body + 4, true), dv.getFloat64(body + 6, true));
+        break;
+      }
+      case 0x027E: {                               // RK
+        const row = dv.getUint16(body, true), col = dv.getUint16(body + 2, true);
+        numCell(row, col, dv.getUint16(body + 4, true), rkToNum(dv.getInt32(body + 6, true)));
+        break;
+      }
+      case 0x00BD: {                               // MULRK
+        const row = dv.getUint16(body, true);
+        const c0 = dv.getUint16(body + 2, true);
+        const n = (len - 6) / 6;
+        for (let i = 0; i < n; i++) {
+          const o = body + 4 + i * 6;
+          numCell(row, c0 + i, dv.getUint16(o, true), rkToNum(dv.getInt32(o + 2, true)));
+        }
+        break;
+      }
+      case 0x0006: {                               // FORMULA (cached result)
+        const row = dv.getUint16(body, true), col = dv.getUint16(body + 2, true);
+        const xf = dv.getUint16(body + 4, true);
+        // A cached string/bool/error has 0xFFFF in the top word; otherwise it's a double.
+        if (dv.getUint16(body + 12, true) === 0xFFFF) {
+          const kind = dv.getUint8(body + 6);
+          if (kind === 0) put(row, col, "");       // string arrives in the next STRING record
+          else if (kind === 1) put(row, col, !!dv.getUint8(body + 8));
+          else put(row, col, null);
+          cur && (cur._pendingStr = [row, col]);
+        } else {
+          numCell(row, col, xf, dv.getFloat64(body + 6, true));
+        }
+        break;
+      }
+      case 0x0201: {                               // BLANK
+        put(dv.getUint16(body, true), dv.getUint16(body + 2, true), null);
+        break;
+      }
+      case 0x00BE: {                               // MULBLANK
+        const row = dv.getUint16(body, true), c0 = dv.getUint16(body + 2, true);
+        const n = (len - 6) / 2;
+        for (let i = 0; i < n; i++) put(row, c0 + i, null);
+        break;
+      }
+      case 0x0207: {                               // STRING (result of the last FORMULA)
+        if (cur && cur._pendingStr) {
+          const [s] = readStr(body);
+          put(cur._pendingStr[0], cur._pendingStr[1], s);
+          cur._pendingStr = null;
+        }
+        break;
+      }
+      default: break;
+    }
+    p = body + len;
+  }
+
+  function readSST(flat, bounds, out) {
+    const fd = new DataView(flat.buffer, flat.byteOffset, flat.byteLength);
+    let q = 8;                                     // skip cstTotal, cstUnique
+    const nextBound = at => bounds.find(b => b > at);
+    while (q < flat.length && out.length < 1e6) {
+      if (q + 3 > flat.length) break;
+      const cch = fd.getUint16(q, true); q += 2;
+      let flags = fd.getUint8(q); q += 1;
+      let wide = flags & 0x01;
+      const rich = flags & 0x08, ext = flags & 0x04;
+      let runs = 0, extSz = 0;
+      if (rich) { runs = fd.getUint16(q, true); q += 2; }
+      if (ext)  { extSz = fd.getUint32(q, true); q += 4; }
+      let s = "", read = 0;
+      while (read < cch) {
+        const bound = nextBound(q);
+        // A CONTINUE boundary restarts with a fresh flags byte, and the
+        // width can change mid-string — this is the trap in BIFF8 SST.
+        if (bound != null && q === bound) { flags = fd.getUint8(q); wide = flags & 0x01; q += 1; }
+        if (wide) { s += String.fromCharCode(fd.getUint16(q, true)); q += 2; }
+        else      { s += String.fromCharCode(fd.getUint8(q)); q += 1; }
+        read++;
+      }
+      q += runs * 4 + extSz;
+      out.push(s);
+    }
+  }
+
+  // Match sheets to their grids by BOF position within the stream.
+  return sheets.map(sh => ({
+    name: sh.name,
+    rows: (grids.get(sh.bofPos) || []).map(r => r.map(c => (c === undefined ? null : c)))
+  }));
+}
+
+/* ============================================================
+   OOXML (.xlsx) — a zip of XML
+   ============================================================ */
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream === "undefined") throw new Error("no DecompressionStream");
+  const ds = new DecompressionStream("deflate-raw");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function readZip(buf) {
+  const d = new DataView(buf), u8 = new Uint8Array(buf);
+  // End of central directory: scan back for the signature.
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= 0 && i > u8.length - 66000; i--) {
+    if (d.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("not a zip");
+  const count = d.getUint16(eocd + 10, true);
+  let p = d.getUint32(eocd + 16, true);
+  const files = new Map();
+  for (let i = 0; i < count; i++) {
+    if (d.getUint32(p, true) !== 0x02014b50) break;
+    const method = d.getUint16(p + 10, true);
+    const csize = d.getUint32(p + 20, true);
+    const nameLen = d.getUint16(p + 28, true);
+    const extraLen = d.getUint16(p + 30, true);
+    const cmtLen = d.getUint16(p + 32, true);
+    const lho = d.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nameLen));
+    // Local header carries its own (possibly different) extra-field length.
+    const lNameLen = d.getUint16(lho + 26, true);
+    const lExtraLen = d.getUint16(lho + 28, true);
+    const dataAt = lho + 30 + lNameLen + lExtraLen;
+    files.set(name, { method, bytes: u8.subarray(dataAt, dataAt + csize) });
+    p += 46 + nameLen + extraLen + cmtLen;
+  }
+  const out = new Map();
+  for (const [name, f] of files) {
+    out.set(name, f.method === 0 ? f.bytes : await inflateRaw(f.bytes));
+  }
+  return out;
+}
+
+const XLSX_DATE_FMT = /[ymdhs]/i;
+
+async function parseXLSX(buf) {
+  const zip = await readZip(buf);
+  const dec = b => new TextDecoder().decode(b);
+  const parseXml = t => new DOMParser().parseFromString(t, "application/xml");
+
+  const shared = [];
+  if (zip.has("xl/sharedStrings.xml")) {
+    const doc = parseXml(dec(zip.get("xl/sharedStrings.xml")));
+    for (const si of doc.getElementsByTagName("si")) {
+      // <si> may hold one <t> or several inside <r> runs.
+      shared.push([...si.getElementsByTagName("t")].map(t => t.textContent).join(""));
+    }
+  }
+
+  // Which cell styles are dates.
+  const dateXf = new Set();
+  if (zip.has("xl/styles.xml")) {
+    const doc = parseXml(dec(zip.get("xl/styles.xml")));
+    const custom = new Map();
+    for (const n of doc.getElementsByTagName("numFmt")) {
+      custom.set(+n.getAttribute("numFmtId"), n.getAttribute("formatCode") || "");
+    }
+    const cellXfs = doc.getElementsByTagName("cellXfs")[0];
+    if (cellXfs) {
+      [...cellXfs.getElementsByTagName("xf")].forEach((xf, i) => {
+        const id = +(xf.getAttribute("numFmtId") || 0);
+        const code = custom.get(id);
+        if (DATE_FMT_IDS.has(id) || (code && XLSX_DATE_FMT.test(code.replace(/"[^"]*"/g, "")))) {
+          dateXf.add(i);
+        }
+      });
+    }
+  }
+
+  // Sheet names in workbook order.
+  const names = [];
+  if (zip.has("xl/workbook.xml")) {
+    const doc = parseXml(dec(zip.get("xl/workbook.xml")));
+    for (const sh of doc.getElementsByTagName("sheet")) names.push(sh.getAttribute("name"));
+  }
+
+  const sheetFiles = [...zip.keys()].filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k))
+    .sort((a, b) => (+a.match(/(\d+)/)[1]) - (+b.match(/(\d+)/)[1]));
+
+  const colOf = ref => {
+    let n = 0;
+    for (const ch of ref) {
+      const c = ch.toUpperCase();
+      if (c < "A" || c > "Z") break;
+      n = n * 26 + (c.charCodeAt(0) - 64);
+    }
+    return n - 1;
+  };
+
+  return sheetFiles.map((f, i) => {
+    const doc = parseXml(dec(zip.get(f)));
+    const rows = [];
+    for (const row of doc.getElementsByTagName("row")) {
+      const rIdx = +(row.getAttribute("r") || rows.length + 1) - 1;
+      while (rows.length <= rIdx) rows.push([]);
+      const out = rows[rIdx];
+      for (const c of row.getElementsByTagName("c")) {
+        const col = colOf(c.getAttribute("r") || "");
+        if (col < 0) continue;
+        while (out.length <= col) out.push(null);
+        const t = c.getAttribute("t");
+        const vEl = c.getElementsByTagName("v")[0];
+        if (t === "inlineStr") {
+          out[col] = [...c.getElementsByTagName("t")].map(x => x.textContent).join("");
+          continue;
+        }
+        if (!vEl) { out[col] = null; continue; }
+        const raw = vEl.textContent;
+        if (t === "s") out[col] = shared[+raw] ?? "";
+        else if (t === "str" || t === "e") out[col] = raw;
+        else if (t === "b") out[col] = raw === "1";
+        else {
+          const num = Number(raw);
+          const s = +(c.getAttribute("s") || 0);
+          out[col] = (dateXf.has(s) && num > 0) ? serialToDate(num) : num;
+        }
+      }
+    }
+    return { name: names[i] || f.replace(/.*\//, ""), rows };
+  });
+}
+
+/* ============================================================
+   Entry point
+   ============================================================ */
+async function readWorkbook(buf) {
+  const u8 = new Uint8Array(buf);
+  if (u8[0] === 0x50 && u8[1] === 0x4B) return parseXLSX(buf);       // "PK" — zip
+  if (u8[0] === 0xD0 && u8[1] === 0xCF) {                            // OLE2
+    const { entries, streamOf } = readCFB(buf);
+    const wb = entries.find(e => /^(Workbook|Book)$/i.test(e.name));
+    if (!wb) throw new Error("no Workbook stream in that .xls");
+    return parseBIFF(streamOf(wb));
+  }
+  throw new Error("not an Excel workbook");
+}
+
+/* ============================================================
+   Curve ingest.  refresh-curve.mjs is the canonical implementation of these
+   rules; this is the browser port so a file can be loaded with no tooling.
+   ============================================================ */
+
+/**
+ * Maturity string -> years. "18M", "1.5", "1Y", "3 months", "P18M",
+ * "6 חודשים", "M001|1 month". refresh-curve.mjs is the canonical version.
+ *
+ * strict — used when scanning candidate header rows: a bare number above 40 is
+ * rejected rather than guessed as months, so a metadata row full of codes like
+ * "DWH_SRC_0340" cannot masquerade as a maturity row.
+ */
+function parseTenor(raw, opts) {
+  if (raw == null) return null;
+  if (raw instanceof Date) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  // Date cells are not maturities. Two-group forms must not accept "." as a
+  // separator — "0.25" is a maturity, and reading it as a date drops the short end.
+  if (/^\d{1,4}[-/.]\d{1,4}[-/.]\d{1,4}$/.test(s)) return null;
+  if (/^\d{1,2}\/\d{2,4}$/.test(s)) return null;
+  if (/^\d{1,2}-\d{4}$/.test(s) || /^\d{4}-\d{1,2}$/.test(s)) return null;
+  // SDMX cells are "CODE|Human label": read the label, and require an explicit
+  // unit there so a stray number ("maturity in month 1") isn't guessed at.
+  if (s.includes("|")) {
+    const label = s.slice(s.lastIndexOf("|") + 1).trim();
+    return label ? readTenor(label, { requireUnit: true }) : null;
+  }
+  return readTenor(s, { strict: !!(opts && opts.strict) });
+}
+
+function readTenor(s, o) {
+  const iso = s.match(/^p(?:(\d+(?:\.\d+)?)y)?(?:(\d+(?:\.\d+)?)m)?$/);
+  if (iso && (iso[1] || iso[2])) return parseFloat(iso[1] || 0) + parseFloat(iso[2] || 0) / 12;
+  s = s.replace(/^(tenor|maturity|term|mat)[_\-\s:]*/, "");
+  const hebM = /חוד/.test(s), hebY = /שנ/.test(s);
+  const num = s.match(/-?\d+(?:[.,]\d+)?/);
+  if (!num) return null;
+  const v = parseFloat(num[0].replace(",", "."));
+  if (!Number.isFinite(v)) return null;
+  if (hebM) return v / 12;
+  if (hebY) return v;
+  const rest = s.slice(num.index + num[0].length).replace(/^[-\s]+/, "");
+  if (/^(m|mo|mon|month|months|mths?)\b/.test(rest)) return v / 12;
+  if (/^(y|yr|yrs|year|years)\b/.test(rest)) return v;
+  if (/^(d|day|days)\b/.test(rest)) return v / 365;
+  if (/^(w|wk|week|weeks)\b/.test(rest)) return v / 52;
+  if (o.requireUnit) return null;
+  if (o.strict) return (v > 0 && v <= 40) ? v : null;
+  return v > 40 ? v / 12 : v;
+}
+
+function parseRate(raw) {
+  if (raw == null) return null;
+  let s = String(raw).trim();
+  if (!s || /^(na|n\/a|-|\.\.|null)$/i.test(s)) return null;
+  let neg = false;
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+  s = s.replace(/%/g, "").replace(/\s/g, "");
+  if (/,\d{1,2}$/.test(s) && !/\./.test(s)) s = s.replace(",", ".");
+  else s = s.replace(/,/g, "");
+  const v = parseFloat(s);
+  if (!Number.isFinite(v)) return null;
+  return neg ? -v : v;
+}
+
+function splitWith(src, delim) {
+  const rows = [];
+  let row = [], field = "", q = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (q) {
+      if (c === '"') { if (src[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += c;
+      continue;
+    }
+    if (c === '"') { q = true; continue; }
+    if (c === delim) { row.push(field); field = ""; continue; }
+    if (c === "\n" || c === "\r") {
+      if (c === "\r" && src[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      if (row.some(v => v.trim() !== "")) rows.push(row);
+      row = [];
+      continue;
+    }
+    field += c;
+  }
+  row.push(field);
+  if (row.some(v => v.trim() !== "")) rows.push(row);
+  return rows;
+}
+
+/** Pick the delimiter giving the most consistent column count, not the most hits:
+    EU exports have more decimal commas than ";" separators. */
+function parseDelimited(text) {
+  const src = text.replace(/^﻿/, "");
+  let best = null;
+  for (const d of [",", ";", "\t", "|"]) {
+    const rows = splitWith(src, d);
+    if (!rows.length) continue;
+    const tally = new Map();
+    for (const r of rows) tally.set(r.length, (tally.get(r.length) || 0) + 1);
+    let modal = 0, hits = 0;
+    for (const [c, n] of tally) if (n > hits || (n === hits && c > modal)) { modal = c; hits = n; }
+    if (modal < 2) continue;
+    const score = hits * 1000 + modal;
+    if (!best || score > best.score) best = { score, rows };
+  }
+  const rows = best ? best.rows : splitWith(src, ",");
+  // Drop "#" comment lines. Data exports routinely carry a provenance header,
+  // and a comment containing a comma otherwise parses as a two-column header row
+  // and outscores the real one.
+  return rows.filter(r => !String(r[0] ?? "").trim().startsWith("#"));
+}
+
+const HINTS = {
+  tenor: ["tenor","maturity","term","years","year","yrs","period","horizon","duration","mat","לפדיון","טווח","תקופה","שנים"],
+  value: ["value","rate","yield","obs_value","obsvalue","zero","return","תשואה","ריבית","שיעור"],
+  date:  ["date","time_period","timeperiod","period","תאריך"]
+};
+function bestCol(header, hints) {
+  let bi = -1, bs = 0;
+  header.forEach((h, i) => {
+    const n = String(h).trim().toLowerCase();
+    let s = 0;
+    for (const hint of hints) { if (n === hint) { s = 100; break; } if (n.includes(hint)) s = Math.max(s, 60); }
+    if (s > bs) { bs = s; bi = i; }
+  });
+  return bs > 0 ? bi : -1;
+}
+
+/** Rows -> {points, asOf}. Keeps only the latest observation date if dated. */
+function rowsToCurve(rows) {
+  if (!rows.length) return { points: [], asOf: null };
+  const header = rows[0].map(h => String(h).trim());
+  const hasHeader = header.some(h => /[a-zא-ת]/i.test(h));
+  const body = hasHeader ? rows.slice(1) : rows;
+  if (!body.length) return { points: [], asOf: null };
+
+  let ti = hasHeader ? bestCol(header, HINTS.tenor) : -1;
+  let vi = hasHeader ? bestCol(header, HINTS.value) : -1;
+  const di = hasHeader ? bestCol(header, HINTS.date) : -1;
+
+  if (ti < 0 && body.some(r => parseTenor(r[0]) != null)) ti = 0;
+  if (vi < 0) {
+    const width = Math.max(...body.map(r => r.length));
+    for (let i = width - 1; i >= 0; i--) {
+      if (i === ti || i === di) continue;
+      const hits = body.filter(r => parseRate(r[i]) != null).length;
+      if (hits >= Math.max(1, Math.floor(body.length * 0.5))) { vi = i; break; }
+    }
+  }
+  if (ti < 0 || vi < 0 || ti === vi) return { points: [], asOf: null };
+
+  let use = body, asOf = null;
+  if (di >= 0 && di !== ti) {
+    const dates = [...new Set(body.map(r => String(r[di] || "").trim()).filter(Boolean))].sort();
+    if (dates.length) {
+      asOf = dates[dates.length - 1];
+      if (dates.length > 1) use = body.filter(r => String(r[di] || "").trim() === asOf);
+    }
+  }
+  const map = new Map();
+  for (const r of use) {
+    const t = parseTenor(r[ti]), v = parseRate(r[vi]);
+    if (t == null || v == null || !(t > 0)) continue;
+    map.set(t, v);
+  }
+  return { points: [...map.entries()].sort((a, b) => a[0] - b[0]), asOf };
+}
+
+/**
+ * WIDE table: one row per date, one column per maturity, most recent row last.
+ * This is the Bank of Israel workbook's shape (Statistics/shcd08_e.xls), so a
+ * CSV export of it lands here rather than in the long-format reader.
+ */
+function rowsToCurveWide(rows) {
+  if (!rows.length) return { points: [], asOf: null };
+
+  // Most DISTINCT strict maturities wins: metadata rows that repeat one code
+  // across every column would otherwise tie with the real maturity row.
+  let hi = -1, best = 0, colTenor = null;
+  for (let i = 0; i < Math.min(rows.length, 40); i++) {
+    const map = new Map();
+    for (let c = 0; c < rows[i].length; c++) {
+      const t = parseTenor(rows[i][c], { strict: true });
+      if (t != null && t > 0 && t <= 50) map.set(c, t);
+    }
+    const distinct = new Set(map.values()).size;
+    if (distinct > best) { best = distinct; hi = i; colTenor = map; }
+  }
+  if (hi < 0 || best < 3) return { points: [], asOf: null };
+
+  const body = rows.slice(hi + 1);
+  const usable = [];
+  for (const r of body) {
+    let n = 0;
+    for (const c of colTenor.keys()) if (parseRate(r[c]) != null) n++;
+    if (n >= Math.max(2, Math.ceil(colTenor.size * 0.4))) usable.push(r);
+  }
+  if (!usable.length) return { points: [], asOf: null };
+
+  const row = usable[usable.length - 1];
+  const points = [];
+  for (const [c, t] of colTenor) {
+    const v = parseRate(row[c]);
+    if (v != null) points.push([t, v]);
+  }
+  points.sort((a, b) => a[0] - b[0]);
+
+  // The date isn't always in column A — BOI's series export puts it in B.
+  const firstMat = Math.min(...colTenor.keys());
+  let asOf = null;
+  for (let c = 0; c < firstMat && !asOf; c++) {
+    const st = stampOf(row[c]);
+    if (st && /^\d{4}-\d{2}-\d{2}$/.test(st)) asOf = st;
+  }
+  return { points, asOf };
+}
+
+function stampOf(cell) {
+  if (cell == null) return null;
+  // A workbook gives real Date cells; a CSV gives text. Both reach here.
+  if (cell instanceof Date) {
+    return Number.isFinite(cell.getTime()) ? cell.toISOString().slice(0, 10) : null;
+  }
+  const s = String(cell).trim();
+  const dmy = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (dmy) {
+    let y = dmy[3];
+    if (y.length === 2) y = (Number(y) > 70 ? "19" : "20") + y;
+    return `${y}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return null;
+}
+
+/** Percent vs fraction: the page assumes percent, so 0.034 must be scaled. */
+function normaliseScale(points) {
+  const vals = points.map(p => p[1]).filter(v => Number.isFinite(v) && v !== 0);
+  if (!vals.length) return points;
+  const max = Math.max(...vals.map(Math.abs));
+  if (max > 0 && max < 0.25) return points.map(([t, r]) => [t, Math.round(r * 100 * 1e6) / 1e6]);
+  return points;
+}
+
+/** Prefer whichever orientation yields more points. */
+function rowsToCurveAuto(rows) {
+  const wide = rowsToCurveWide(rows);
+  const long = rowsToCurve(rows);
+  const best = wide.points.length > long.points.length ? wide : long;
+  return { points: normaliseScale(best.points), asOf: best.asOf };
+}
+
+function pairsFrom(arr) {
+  return arr.map(r => Array.isArray(r)
+      ? [parseTenor(r[0]), parseRate(r[1])]
+      : [parseTenor(r.tenor ?? r.years ?? r.maturity), parseRate(r.rate ?? r.value ?? r.yield)])
+    .filter(p => p[0] != null && p[1] != null && p[0] > 0)
+    .sort((a, b) => a[0] - b[0]);
+}
+
+/**
+ * Parse any supported curve payload.
+ * Returns {nominal, real, asOf} — legs absent from the source come back null.
+ */
+function parseCurvePayload(text) {
+  const t = text.trim();
+  if (t.startsWith("{") || t.startsWith("[")) {
+    let obj;
+    try { obj = JSON.parse(t); } catch { return { error: "That file isn't valid JSON." }; }
+    if (Array.isArray(obj)) {
+      const pts = pairsFrom(obj);
+      return pts.length ? { single: pts, asOf: null } : { error: "No maturity/rate pairs in that JSON." };
+    }
+    if (Array.isArray(obj.nominal) || Array.isArray(obj.real)) {
+      const nom = Array.isArray(obj.nominal) ? pairsFrom(obj.nominal) : null;
+      const real = Array.isArray(obj.real) ? pairsFrom(obj.real) : null;
+      if (!nom?.length && !real?.length) return { error: "curve.json has no usable points." };
+      // refresh-curve.mjs records every source it spliced; carry that through so
+      // a merged curve still shows what it was built from.
+      const byLeg = {}, segsByLeg = {};
+      for (const s of Array.isArray(obj.sources) ? obj.sources : []) {
+        if (!s || !s.leg) continue;
+        (byLeg[s.leg] = byLeg[s.leg] || []).push(
+          [s.label, s.range && s.range.replace(/(\d+\.\d{3})\d+/g, (m, d) => (+d).toFixed(2)),
+           s.asOf].filter(Boolean).join(" · "));
+        // `owns` is the maturity span this source actually won after merging,
+        // which is what the chart colours by — not the file's own range, which
+        // may include points a later source overwrote.
+        if (Array.isArray(s.owns) && Number.isFinite(+s.owns[0]) && Number.isFinite(+s.owns[1])) {
+          // Strip the "[sheet]" suffix the CLI appends, so the file name shown
+          // matches what was downloaded.
+          const file = String(s.label || "source").replace(/\s*\[[^\]]*\]\s*$/, "");
+          (segsByLeg[s.leg] = segsByLeg[s.leg] || []).push(
+            { key: sourceKeyOf(file), label: seriesTitle(file, s.leg), file,
+              from: +s.owns[0], to: +s.owns[1], asOf: s.asOf || null });
+        }
+      }
+      // Each leg has its own observation date: the nominal curve can be a
+      // daily makam print while the CPI-linked one is a mid-month average from
+      // a different file. The top-level asOf is the freshest of everything,
+      // which would overstate how current the older leg is.
+      const legAsOf = (obj.legAsOf && typeof obj.legAsOf === "object") ? obj.legAsOf : {};
+      return {
+        nominal: nom?.length ? nom : null, real: real?.length ? real : null,
+        asOf: obj.asOf || null, legAsOf, parts: byLeg, segs: segsByLeg
+      };
+    }
+    return { error: "Unrecognised JSON shape — expected {nominal, real} or a list of pairs." };
+  }
+  const { points, asOf } = rowsToCurveAuto(parseDelimited(t));
+  if (points.length) return { single: points, asOf };
+
+  // Hand-typed input mixes separators line to line ("3m, 3.55%", "6mo  3.45",
+  // "1y: 3.40"), which no single-delimiter table parse can handle. Fall back to
+  // reading one maturity/rate pair per line.
+  const loose = parseLinePairs(t);
+  if (loose.length) return { single: loose, asOf: null };
+
+  return { error: "Couldn't find a maturity column and a rate column in that file." };
+}
+
+/** One "<maturity> <rate>" pair per line, any separator. */
+function parseLinePairs(text) {
+  const out = [];
+  for (const line of text.split(/[\n;]/)) {
+    const s = line.trim();
+    if (!s) continue;
+    const m = s.match(/^([0-9]*\.?[0-9]+)\s*(mo|m|y|yr|years?|months?)?\s*[,\t |:]+\s*(-?[0-9]*\.?[0-9]+)\s*%?$/i);
+    if (!m) continue;
+    let t = parseFloat(m[1]);
+    if ((m[2] || "").toLowerCase().startsWith("m")) t /= 12;
+    const r = parseFloat(m[3]);
+    if (Number.isFinite(t) && Number.isFinite(r) && t > 0) out.push([t, r]);
+  }
+  return out.sort((a, b) => a[0] - b[0]);
+}
+
+/** Trim float noise so the editor shows 0.083333 / 3.7184, not 17 digits. */
+function tidy(points) {
+  return points.map(([t, r]) => [
+    Math.round(t * 1e6) / 1e6,
+    Math.round(r * 1e4) / 1e4
+  ]);
+}
+
+/** Apply a parsed payload. A single-leg payload lands on the paste box's leg. */
+function applyCurvePayload(res, label, kind) {
+  if (res.error) return res.error;
+  let legs = [];
+  if (res.single) { const l = pasteLeg(); state[l] = tidy(res.single); legs.push(l); }
+  else {
+    if (res.nominal) { state.nominal = tidy(res.nominal); legs.push("nominal"); }
+    if (res.real)    { state.real = tidy(res.real);       legs.push("real"); }
+  }
+  if (!legs.length) return "Nothing to load from that file.";
+
+  const asOf = normaliseAsOf(res.asOf);
+  // The curve's own date is a property of the file, reported in the provenance
+  // line — not something to hand-edit. Only the valuation date is a user knob,
+  // and it is seeded from the curve when it hasn't been set.
+  for (const l of legs) {
+    // A whole-curve payload replaces the leg outright, so the per-source pieces
+    // it was built from no longer describe what is on screen.
+    for (const sd of SOURCES) if (sd.leg === l) delete state.src[sd.key];
+    const legDate = normaliseAsOf(res.legAsOf && res.legAsOf[l]) || asOf;
+    state.prov[l] = { kind, label, asOf: legDate || null,
+      parts: (res.parts && res.parts[l]) || null,
+      segs:  (res.segs  && res.segs[l])  || null };
+  }
+
+  // A loaded curve.json names its own sources, so adopt them: the rows should
+  // report the file that is actually on screen, not the built-in they replaced.
+  for (const l of legs) {
+    for (const sg of (state.prov[l].segs || [])) {
+      if (!sg.key || !SOURCE_BY_KEY[sg.key]) continue;
+      state.src[sg.key] = {
+        points: state[l].filter(p => p[0] >= sg.from - 1e-9 && p[0] <= sg.to + 1e-9)
+          .map(p => p.slice()),
+        asOf: sg.asOf || state.prov[l].asOf || null,
+        file: sg.file || label,
+        builtin: false
+      };
+    }
+  }
+
+  reseedAnchor();
+  renderSources();
+  renderCurveEditor();
+  render();
+  return null;
+}
+
+function normaliseAsOf(s) {
+  if (!s) return null;
+  const t = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  if (/^\d{4}-\d{2}$/.test(t)) return t + "-01";
+  const dmy = t.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  return null;
+}
+
+const LEG_NAME = { nominal: "Unlinked", real: "CPI-linked" };
+
+function renderProvenance() {
+  const el = $("provenance");
+  const anyPlaceholder = ["nominal", "real"].some(l => state.prov[l].kind === "builtin");
+
+  // The source list above IS the provenance for anything built from the three
+  // known series — it names the file, the date and the range, and gives you the
+  // button to replace it. This block is for the legs that list can't describe:
+  // a pasted curve, or a curve.json that replaced a leg wholesale.
+  const off = ["nominal", "real"].filter(l =>
+    !((state.prov[l].segs || []).some(sg => sg.key)));
+  el.hidden = !off.length;
+
+  el.classList.toggle("is-live", !anyPlaceholder);
+  el.innerHTML = off.map(l => {
+    const p = state.prov[l];
+    const est = p.kind === "builtin";
+    return '<span class="leg' + (est ? " is-est" : "") + '">' +
+      LEG_NAME[l] + ": <b>" + escapeHtml(p.label) + "</b>" +
+      '<span class="stamp"> · ' + state[l].length + " pts" +
+      (p.asOf ? " · " + p.asOf : "") + "</span></span>" +
+      // Every source it was built from. Listed even when there is only one:
+      // the leg's own label is the series name now, so this line is the only
+      // place the actual file appears.
+      ((p.parts || []).length
+        ? '<span class="parts">' + p.parts.map(x => "↳ " + escapeHtml(x)).join("<br>") + "</span>"
+        : "");
+  }).join("");
+
+  const notice = $("placeholderNotice");
+  notice.hidden = !anyPlaceholder;
+  if (anyPlaceholder) {
+    const names = ["nominal", "real"].filter(l => state.prov[l].kind === "builtin")
+      .map(l => l === "real" ? "CPI-linked" : "unlinked").join(" and ");
+    notice.querySelector("span").innerHTML =
+      "<b>The " + names + " curve is an illustrative placeholder</b>, not market data — the " +
+      "loaded Bank of Israel files carry nominal yields only. CPI-linked tracks read off it are " +
+      "estimates, and the breakeven inflation column is withheld until then. Load a Galil zero " +
+      "curve and both become real.";
+  }
+}
+
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/**
+ * Auto-load ./curve.json from the page's own origin. This is what makes a
+ * self-hosted deployment self-updating: cron refresh-curve.mjs next to the page
+ * and every reload picks up the new curve. Inside a published Artifact the
+ * request is blocked by the sandbox CSP, so it fails quietly and the built-in
+ * placeholder stands — hence the loud placeholder notice.
+ */
+async function autoLoadCurve() {
+  // A relative fetch from file:// is blocked by CORS before it ever leaves the
+  // page, so skip it there rather than log a guaranteed failure.
+  if (location.protocol !== "http:" && location.protocol !== "https:") return;
+  try {
+    const res = await fetch("./curve.json", { cache: "no-store" });
+    if (!res.ok) return;
+    const text = await res.text();
+    const parsed = parseCurvePayload(text);
+    if (parsed.error) { console.warn("curve.json: " + parsed.error); return; }
+    applyCurvePayload(parsed, "curve.json", "auto");
+  } catch {
+    /* No curve.json reachable — expected in the sandbox and when opened as a
+       bare file. Defaults stay, and the placeholder notice stays visible. */
+  }
+}
+
+function parsePaste(text) {
+  const res = parseCurvePayload(text);
+  if (res.error || (!res.single && !res.nominal && !res.real)) return [];
+  return res.single || res.nominal || res.real || [];
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+[ "resetMonths","termYears","anchorToday","margin","horizons",
+  "principal","payYears","interp","adjMethod","adjParam" ].forEach(id => {
+  $(id).addEventListener("input", render);
+  $(id).addEventListener("change", render);
+});
+
+document.querySelectorAll(".chip[data-h]").forEach(b =>
+  b.addEventListener("click", () => { $("horizons").value = b.dataset.h; render(); }));
+
+$("anchorToday").addEventListener("input", () => { state.anchorTouched = true; });
+
+// Seed the parameter with something sensible for the method just chosen.
+$("adjMethod").addEventListener("change", () => {
+  const m = $("adjMethod").value;
+  if (m === "shrink") $("adjParam").value = "50";
+  else if (m === "fixed") {
+    const lam = longEndSlope(buildCurve(state[TRACKS[$("track").value].curve], $("interp").value));
+    $("adjParam").value = String(Math.max(0, Math.round(lam * 100)));
+  }
+  render();
+});
+
+$("calOn").addEventListener("click", () => setCal(true));
+$("calOff").addEventListener("click", () => setCal(false));
+function setCal(on) {
+  state.calibrate = on;
+  $("calOn").setAttribute("aria-pressed", String(on));
+  $("calOff").setAttribute("aria-pressed", String(!on));
+  render();
+}
+
+/**
+ * Rebuild a leg's curve from whatever sources are loaded for it, and with it
+ * the provenance the chart colours and the legend read. Later sources win on a
+ * shared maturity, and each source's segment is the maturities it ACTUALLY
+ * won — not the range its file covers, so a point overwritten by a later
+ * source is not claimed by the one that lost it.
+ */
+function mergeLeg(leg) {
+  const used = SOURCES.filter(s => s.leg === leg)
+    .sort((a, b) => a.order - b.order)
+    .map(s => ({ def: s, data: state.src[s.key] }))
+    .filter(x => x.data && x.data.points && x.data.points.length);
+
+  if (!used.length) return false;          // nothing known — leave the leg alone
+
+  const rates = new Map(), owner = new Map();
+  for (const { def, data } of used) {
+    for (const [t, r] of data.points) { rates.set(t, r); owner.set(t, def.key); }
+  }
+  state[leg] = [...rates.entries()].sort((a, b) => a[0] - b[0]).map(([t, r]) => [t, r]);
+
+  const segs = [];
+  for (const { def, data } of used) {
+    const ts = [...owner.entries()].filter(([, k]) => k === def.key).map(([t]) => t);
+    if (!ts.length) continue;              // fully overwritten: owns nothing, draws nothing
+    segs.push({ key: def.key, label: def.title, file: data.file,
+                from: Math.min(...ts), to: Math.max(...ts), asOf: data.asOf || null });
+  }
+
+  const dates = segs.map(x => x.asOf).filter(Boolean).sort();
+  const allBuiltin = used.every(x => x.data.builtin);
+  state.prov[leg] = {
+    kind: allBuiltin ? "baked" : "file",
+    label: BUILTIN_PROV[leg].label,
+    asOf: dates.length ? dates[dates.length - 1] : null,
+    parts: segs.map(x => [x.file || x.label, tenorLabel(x.from) + "–" + tenorLabel(x.to), x.asOf]
+      .filter(Boolean).join(" · ")),
+    segs
+  };
+  return true;
+}
+
+const mergeAll = () => { mergeLeg("nominal"); mergeLeg("real"); };
+
+$("resetCurve").addEventListener("click", () => {
+  state.src = seedSources();
+  mergeAll();
+  renderSources(); renderCurveEditor(); render();
+});
+
+/* ---- file import: works with no network, so it works inside the sandbox ---- */
+function flashDrop(cls, msg) {
+  const dz = $("dropzone");
+  dz.classList.remove("is-over", "is-bad");
+  if (cls) dz.classList.add(cls);
+  const span = dz.querySelector("span");
+  if (msg) {
+    span.dataset.orig = span.dataset.orig || span.innerHTML;
+    span.textContent = msg;
+    setTimeout(() => {
+      span.innerHTML = span.dataset.orig;
+      dz.classList.remove("is-bad");
+    }, 5000);
+  }
+}
+
+/** Excel workbooks are binary (OLE2 for .xls, a zip for .xlsx). */
+function looksBinaryWorkbook(bytes, name) {
+  if (/\.(xls|xlsx|xlsm|ods)$/i.test(name || "")) return true;
+  return (bytes[0] === 0x50 && bytes[1] === 0x4B) || (bytes[0] === 0xD0 && bytes[1] === 0xCF);
+}
+
+/** Pick the sheet a curve can actually be read from: the one yielding most points. */
+function bestSheet(sheets) {
+  let best = null;
+  for (const sh of sheets) {
+    const res = rowsToCurveAuto(sh.rows || []);
+    if (res.points.length && (!best || res.points.length > best.res.points.length)) {
+      best = { sh, res };
+    }
+  }
+  return best;
+}
+
+/**
+ * Read one source file into state.src[key] and re-merge its leg.
+ *
+ * The structure is taken to be the one the Bank of Israel publishes: a wide
+ * table, one row per date, one column per maturity, most recent row LAST. That
+ * is what the CLI assumes too, and it is what the caller was told when they
+ * picked this button — so a file with a different shape should fail loudly
+ * rather than be coerced into a plausible-looking curve.
+ */
+async function ingestSource(key, file) {
+  const def = SOURCE_BY_KEY[key];
+  if (!def || !file) return;
+  try {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let res;
+    if (looksBinaryWorkbook(bytes, file.name)) {
+      const picked = bestSheet(await readWorkbook(buf));
+      if (!picked) throw new Error("no maturity/rate table found in that workbook");
+      res = picked.res;
+    } else {
+      res = rowsToCurveAuto(parseDelimited(new TextDecoder().decode(bytes)));
+    }
+    if (!res.points.length) throw new Error("no maturity/rate pairs found");
+    const points = normaliseScale(res.points);
+
+    state.src[key] = {
+      points: tidy(points), asOf: normaliseAsOf(res.asOf) || null,
+      file: file.name, builtin: false
+    };
+    if (!mergeLeg(def.leg)) throw new Error("nothing to merge");
+
+    reseedAnchor();
+    renderSources(); renderCurveEditor(); render();
+  } catch (e) {
+    flashSource(key, e.message || "could not read that file");
+  }
+}
+
+/** Reseed the anchor from the new curve, unless the user has typed their own. */
+function reseedAnchor() {
+  if (state.anchorTouched) return;
+  const M0 = compute();
+  if (Number.isFinite(M0.rawToday) && M0.track.kind !== "prime") {
+    $("anchorToday").value = M0.rawToday.toFixed(2);
+  }
+}
+
+/* ---- the source list ------------------------------------------------------ */
+function renderSources() {
+  $("srcGrid").innerHTML = SOURCES.map(d => {
+    const cur = state.src[d.key];
+    const seg = ((state.prov[d.leg] || {}).segs || []).find(x => x.key === d.key);
+    let status, cls;
+    if (!cur) { status = "not loaded"; cls = "is-none"; }
+    else {
+      // Name the file either way: a built-in curve came from a real download
+      // too, and hiding which one until someone uploads is a gap in the record.
+      status = (cur.builtin ? "built in · " : "") +
+        (cur.file || "—") + " · " + (cur.asOf || "no date");
+      cls = cur.builtin ? "is-baked" : "is-live";
+    }
+    const range = seg ? tenorLabel(seg.from) + "–" + tenorLabel(seg.to) : "";
+    // Only the two scheduled series can be checked against the release calendar;
+    // Makam is daily and on no such schedule.
+    const ps = d.scheduled && cur ? pubStatus(cur.asOf) : null;
+    let note = "";
+    if (ps && ps.stale) {
+      note = '<span class="src-stale">newer figures published ' + ps.latest.date +
+        " (" + ps.latest.type + ")" +
+        (ps.missed.length > 1 ? " · " + ps.missed.length + " releases behind" : "") + "</span>";
+      cls += " is-stale";
+    } else if (ps && ps.next) {
+      note = '<span class="src-next">next release ' + ps.next.date + " (" + ps.next.type + ")</span>";
+    }
+    return '<div class="src ' + cls + '" data-key="' + d.key + '">' +
+      '<button type="button" class="chip" data-load="' + d.key + '">' + escapeHtml(d.button) + "</button>" +
+      '<span class="src-hint">' + escapeHtml(d.hint) + "</span>" +
+      '<span class="src-state">' + escapeHtml(status) + (range ? " · " + range : "") + "</span>" +
+      note + "</div>";
+  }).join("");
+  $("srcGrid").querySelectorAll("button[data-load]").forEach(b => {
+    b.addEventListener("click", () => pickFor(b.dataset.load));
+  });
+}
+
+/** Report a failed load on the row that failed, then put the row's state back. */
+function flashSource(key, msg) {
+  const el = $("srcGrid").querySelector('.src[data-key="' + key + '"] .src-state');
+  if (!el) return;
+  const prev = el.textContent;
+  el.textContent = "could not read: " + msg;
+  el.classList.add("bad");
+  setTimeout(() => { el.textContent = prev; el.classList.remove("bad"); }, 6000);
+}
+
+let pendingKey = null;
+function pickFor(key) { pendingKey = key; $("fileInput").click(); }
+
+/**
+ * A file dropped without saying which series it is. Route it: a curve.json goes
+ * through the whole-curve path, and a workbook or CSV is matched to a source by
+ * the maturity range it covers — a table that stops at a year is the short end,
+ * one that runs past fifteen years with real rates is the Galil curve. If the
+ * match is ambiguous, say so rather than guessing: a curve silently attached to
+ * the wrong leg would be wrong everywhere and look fine.
+ */
+async function dropFile(file) {
+  if (!file) return;
+  try {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    if (!looksBinaryWorkbook(bytes, file.name)) {
+      const text = new TextDecoder().decode(bytes);
+      const t = text.trim();
+      if (t.startsWith("{") || t.startsWith("[")) {
+        const err = applyCurvePayload(parseCurvePayload(text), file.name, "file");
+        if (err) return flashDrop("is-bad", err);
+        renderSources();
+        return flashDrop(null, null);
+      }
+    }
+    const res = looksBinaryWorkbook(bytes, file.name)
+      ? (bestSheet(await readWorkbook(buf)) || {}).res
+      : rowsToCurveAuto(parseDelimited(new TextDecoder().decode(bytes)));
+    if (!res || !res.points.length) return flashDrop("is-bad", "No maturity/rate table in that file.");
+    const points = normaliseScale(res.points);
+    const maxT = Math.max(...points.map(p => p[0]));
+    const maxR = Math.max(...points.map(p => p[1]));
+    // Real yields sit far below nominal ones at the same maturity, which is the
+    // only signal in the file itself that tells the two curves apart.
+    const key = maxT <= 1.5 ? "makam" : (maxR < 3 ? "shcd07" : "shcd08");
+    flashDrop(null, null);
+    await ingestSource(key, file);
+    flashDrop(null, "Loaded as " + SOURCE_BY_KEY[key].button + ".");
+  } catch (e) {
+    flashDrop("is-bad", e.message || "Couldn't read that file.");
+  }
+}
+
+$("fileInput").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";                       // allow re-picking the same file
+  if (!f) return;
+  if (pendingKey) { const k = pendingKey; pendingKey = null; ingestSource(k, f); }
+  else dropFile(f);
+});
+
+const dz = $("dropzone");
+["dragenter", "dragover"].forEach(ev => dz.addEventListener(ev, e => {
+  e.preventDefault(); e.stopPropagation();
+  dz.classList.add("is-over");
+}));
+["dragleave", "drop"].forEach(ev => dz.addEventListener(ev, e => {
+  e.preventDefault(); e.stopPropagation();
+  dz.classList.remove("is-over");
+}));
+dz.addEventListener("drop", e => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) dropFile(f);
+});
+// Dropping outside the zone shouldn't navigate away from the page.
+["dragover", "drop"].forEach(ev =>
+  window.addEventListener(ev, e => { if (!dz.contains(e.target)) e.preventDefault(); }));
+
+$("togglePaste").addEventListener("click", () => {
+  const w = $("pasteWrap");
+  w.hidden = !w.hidden;
+  if (!w.hidden) $("pasteBox").focus();
+});
+
+$("applyPaste").addEventListener("click", () => {
+  const box = $("pasteBox");
+  const parsed = parsePaste(box.value);
+  if (!parsed.length) {
+    box.setAttribute("aria-invalid", "true");
+    return;
+  }
+  box.removeAttribute("aria-invalid");
+  const leg = pasteLeg();
+  state[leg] = tidy(parsed);
+  // These points did not come from the files the old provenance names, so the
+  // provenance and the per-source pieces have to go with them — otherwise the
+  // chart would keep colouring hand-typed maturities as if makam and shcd08 had
+  // supplied them, and the next upload would re-merge them back in.
+  for (const s of SOURCES) if (s.leg === leg) delete state.src[s.key];
+  state.prov[leg] =
+    { kind: "typed", label: "entered by hand", asOf: null, parts: null, segs: null };
+  // Focus is on the button, not the box, so the box re-seeds from what was
+  // applied — maturities normalised, rates rounded — showing what landed.
+  renderCurveEditor(); render();
+});
+
+$("track").addEventListener("change", () => {
+  // Tracks quote anchors on different curves and tenors, so a value left over
+  // from the previous track would produce a meaningless calibration offset —
+  // a real anchor of 1.2% against a nominal 3.4%, say. Reseed from the curve
+  // itself; the user then overwrites it with their contract's actual number.
+  const t = TRACKS[$("track").value];
+  if (t.kind === "prime") {
+    $("anchorToday").value = "5.00";       // BOI 3.50% + the 1.5pp convention
+    $("margin").value = "-0.60";
+  } else {
+    const M = compute();                   // rawToday doesn't read the anchor field
+    if (Number.isFinite(M.rawToday)) $("anchorToday").value = M.rawToday.toFixed(2);
+    if (Number($("margin").value) < 0) $("margin").value = "1.20";
+  }
+  render();
+});
+
+const redraw = () => { if (lastModel) { drawPath(lastModel); drawCurves(lastModel); drawSpark(lastModel); } };
+attachHover($("pathChart"),  () => { if (lastModel) drawPath(lastModel); });
+attachHover($("curveChart"), () => { if (lastModel) drawCurves(lastModel); });
+// A resize moves every point, so a hover fixed to old pixels would be wrong.
+window.addEventListener("resize", () => {
+  hoverKey.delete($("pathChart")); hoverKey.delete($("curveChart"));
+  redraw();
+});
+if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+mergeAll();
+renderSources();
+renderCurveEditor();
+render();
+autoLoadCurve();
+</script>
+
+</body>
+</html>

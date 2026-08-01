@@ -1,0 +1,91 @@
+name: Refresh curve
+
+# Pulls the Bank of Israel tables, rebuilds curve.json, and commits it. GitHub
+# Pages redeploys on that commit, so the page picks the new curve up on the next
+# load with no rebuild and no manual step.
+#
+# CADENCE. The two zero-coupon tables publish TWICE A MONTH (the release
+# calendar is in the page). A nightly run is therefore already faster than the
+# data changes; anything more frequent just re-reads the same numbers.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1-5"        # 04:00 UTC = 07:00 Israel (06:00 in winter)
+  workflow_dispatch:              # and on demand from the Actions tab
+
+permissions:
+  contents: write                 # to commit the refreshed curve.json
+
+concurrency:
+  group: refresh-curve
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install SheetJS
+        run: npm install --no-audit --no-fund
+
+      # The two BOI URLs are the ONLY unverified part of this pipeline: the
+      # sandbox this was built in could not reach boi.org.il, so shcd07's URL is
+      # inferred from shcd08's by symmetry. If either is wrong the step below
+      # fails loudly — refresh-curve.mjs exits non-zero when a source does not
+      # parse — and nothing is committed. Fix the URL here, in one place.
+      - name: Pull the curves
+        env:
+          SHCD08: https://www.boi.org.il/boi_files/Statistics/shcd08_e.xls
+          SHCD07: https://www.boi.org.il/boi_files/Statistics/shcd07_e.xls
+        run: |
+          set -euo pipefail
+          node refresh-curve.mjs \
+            --url "$SHCD08" \
+            --real --url "$SHCD07" \
+            --nominal --file makam-short-end.csv \
+            --out curve.next.json \
+            --verbose
+          # Makam is listed LAST so it owns the 1y overlap, where it reads 3.28%
+          # against shcd08's 3.21%. Reversing the order silently changes the 1y
+          # point and the whole short end's attribution.
+
+      # A partial success is the dangerous case: if only one leg parsed, the file
+      # would be written and would drop a curve the page needs. Check before
+      # letting it anywhere near main.
+      - name: Sanity-check the result before committing
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const c = JSON.parse(fs.readFileSync("curve.next.json", "utf8"));
+            const fail = m => { console.error("REJECTED: " + m); process.exit(1); };
+            if (!Array.isArray(c.nominal) || c.nominal.length < 10)
+              fail(`nominal leg has ${c.nominal?.length ?? 0} points, expected 10+`);
+            if (!Array.isArray(c.real) || c.real.length < 5)
+              fail(`real leg has ${c.real?.length ?? 0} points, expected 5+`);
+            const t = c.nominal.map(p => p[0]);
+            if (Math.min(...t) > 0.3) fail("no short end: nominal starts at " + Math.min(...t) + "y");
+            if (Math.max(...t) < 10)  fail("no long end: nominal ends at " + Math.max(...t) + "y");
+            const rates = [...c.nominal, ...c.real].map(p => p[1]);
+            if (rates.some(r => !Number.isFinite(r) || r < -5 || r > 25))
+              fail("a rate is outside -5..25%, so a column was probably misread");
+            console.log(`ok  nominal ${c.nominal.length} pts, real ${c.real.length} pts, asOf ${c.asOf}`);
+          '
+          mv curve.next.json curve.json
+
+      - name: Commit if the curve moved
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- curve.json; then
+            echo "curve.json unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add curve.json
+          git commit -m "curve: refresh from Bank of Israel ($(date -u +%Y-%m-%d))"
+          git push

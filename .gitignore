@@ -1,0 +1,6 @@
+node_modules/
+package-lock.json
+curve.next.json
+preview.html
+*.png
+fixture.xls

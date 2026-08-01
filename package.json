@@ -1,0 +1,18 @@
+{
+  "name": "mortgage-anchor-forecast",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Forward-rate projection of Israeli mortgage anchors from the Bank of Israel zero-coupon curve",
+  "scripts": {
+    "refresh": "node refresh-curve.mjs --url https://www.boi.org.il/boi_files/Statistics/shcd08_e.xls --real --url https://www.boi.org.il/boi_files/Statistics/shcd07_e.xls --nominal --file makam-short-end.csv --out curve.json --verbose",
+    "test": "node test-refresh.mjs && node test-wide.mjs && node test-json-rows.mjs",
+    "serve": "node --input-type=module -e \"import http from 'node:http';import fs from 'node:fs';import path from 'node:path';const t={'.html':'text/html','.json':'application/json','.csv':'text/csv','.mjs':'text/javascript'};http.createServer((q,s)=>{const f=path.join(process.cwd(),q.url==='/'?'index.html':q.url.split('?')[0]);if(!fs.existsSync(f)){s.writeHead(404);return s.end('not found');}s.writeHead(200,{'Content-Type':t[path.extname(f)]||'text/plain'});s.end(fs.readFileSync(f));}).listen(8080,()=>console.log('http://localhost:8080'))\""
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
