@@ -296,7 +296,11 @@ export function rowsToCurve(rows, opts = {}) {
     byTenor.set(t, v);              // later rows win
   }
   const points = [...byTenor.entries()].sort((a, b) => a[0] - b[0]);
-  return { points, diag: { ...diag, mode: "table", tenorCol: ti, valueCol: vi, asOf, kept: points.length } };
+  // Wide mode reports the span it read; report it here too, or a long-format
+  // source shows a blank range in the page's provenance table.
+  const range = points.length
+    ? `${points[0][0]}y..${points[points.length - 1][0]}y` : null;
+  return { points, diag: { ...diag, mode: "table", tenorCol: ti, valueCol: vi, asOf, range, kept: points.length } };
 }
 
 function lastNumericColumn(body) {
@@ -457,6 +461,23 @@ async function loadXlsx() {
   return XLSX;
 }
 
+/**
+ * SheetJS builds date cells in LOCAL time; xls-lite builds them in UTC, and
+ * stampOf reads both with toISOString(). East of UTC the two disagree by a day:
+ * a midnight serial for 2026-07-15 came back as 2026-07-14 in Asia/Jerusalem —
+ * the timezone this project is read from. Re-anchor the wall-clock components to
+ * UTC at the reader boundary so every date cell means the same day everywhere.
+ *
+ * Apply this to SheetJS output only. xls-lite is already UTC; re-anchoring it
+ * would introduce the very shift this removes.
+ */
+export function localDateToUTC(v) {
+  if (!(v instanceof Date) || isNaN(v)) return v;
+  return new Date(Date.UTC(
+    v.getFullYear(), v.getMonth(), v.getDate(),
+    v.getHours(), v.getMinutes(), v.getSeconds(), v.getMilliseconds()));
+}
+
 /** Workbook buffer -> [{name, rows}] with rows as arrays of raw cell values. */
 export async function readSpreadsheet(buf) {
   const X = await loadXlsx();
@@ -464,6 +485,7 @@ export async function readSpreadsheet(buf) {
   return wb.SheetNames.map(name => ({
     name,
     rows: X.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null, blankrows: false })
+      .map(row => row.map(localDateToUTC))
   }));
 }
 
@@ -620,14 +642,29 @@ export function parseJsonRows(obj, o = {}) {
       : "no array of records found; pass --json-path" } };
   }
 
-  const asOf = o.asOf || (o.jsonAsOf ? String(dig(arr[0] || {}, o.jsonAsOf) || "").slice(0, 10) : null)
+  // The observation date usually sits beside the array, not inside it: TASE
+  // returns one TradeDate for the whole response and leaves the per-row field
+  // null. Look at the envelope first, then a record, then give up and use today
+  // — a silent fall back to today is how every tenor ends up a day out.
+  const asOfField = o.jsonAsOf
+    ? String(dig(obj, o.jsonAsOf) ?? dig(arr[0] || {}, o.jsonAsOf) ?? "").slice(0, 10)
+    : "";
+  const asOf = o.asOf || normaliseDate(asOfField) || asOfField
     || new Date().toISOString().slice(0, 10);
 
   const points = [], skipped = [];
   for (const row of arr) {
     if (!row || typeof row !== "object") continue;
     let t = null;
-    if (o.jsonMatures) {
+    if (o.jsonTenorDays) {
+      // A listing that already carries days-to-redemption is worth preferring
+      // over redemption-date arithmetic: the count and the quoted yield were
+      // computed by the source at the same instant, so they agree with each
+      // other. Deriving the count here instead means guessing which day the
+      // source measured from, and at the front of the curve one day is ~90bp.
+      const d = parseRate(dig(row, o.jsonTenorDays));
+      t = d != null && d > 0 ? d / 365 : null;
+    } else if (o.jsonMatures) {
       const raw = dig(row, o.jsonMatures);
       t = raw == null ? null : yearsBetween(asOf, normaliseDate(String(raw).slice(0, 10)) || raw);
     } else {
@@ -657,20 +694,31 @@ export function parseJsonRows(obj, o = {}) {
   return { points: out, diag: {
     mode: "json rows", records: arr.length, kept: out.length,
     skipped: skipped.length, asOf,
-    tenorFrom: o.jsonMatures ? `matures:${o.jsonMatures}` : `tenor:${o.jsonTenor ?? "tenor"}`,
+    range: out.length ? `${out[0][0]}y..${out[out.length - 1][0]}y` : null,
+    tenorFrom: o.jsonTenorDays ? `days:${o.jsonTenorDays}`
+      : o.jsonMatures ? `matures:${o.jsonMatures}` : `tenor:${o.jsonTenor ?? "tenor"}`,
     valueFrom: o.jsonPrice ? `price:${o.jsonPrice} -> yield` : `value:${o.jsonValue ?? "rate"}`
   } };
 }
 
 const BIN_RE = /\.(xls|xlsx|xlsm|xlsb|ods)(\?|#|$)/i;
 
-async function fetchBuffer(url) {
+/**
+ * Fetch a source. `opts.body` switches to POST, which the TASE market API needs:
+ * its securities table is a POST with a JSON filter, not a downloadable file.
+ * `opts.headers` carries the Origin/Referer that API checks.
+ */
+async function fetchBuffer(url, opts = {}) {
   const res = await fetch(url, {
+    method: opts.body != null ? "POST" : "GET",
     headers: {
       // BOI's static host rejects requests without a browser-ish UA.
       "User-Agent": "Mozilla/5.0 (compatible; forward-anchor-calculator)",
-      "Accept": "application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv, */*"
+      "Accept": "application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv, application/json, */*",
+      ...(opts.body != null ? { "Content-Type": "application/json" } : {}),
+      ...(opts.headers || {})
     },
+    ...(opts.body != null ? { body: opts.body } : {}),
     redirect: "follow"
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
@@ -795,11 +843,20 @@ function parseArgs(argv) {
       case "--tenor-col": o._tenorCol = next(); break;
       case "--json-path":    o._jsonPath = next(); break;
       case "--json-tenor":   o._jsonTenor = next(); break;
+      case "--json-tenor-days": o._jsonTenorDays = next(); break;
       case "--json-value":   o._jsonValue = next(); break;
       case "--json-matures": o._jsonMatures = next(); break;
       case "--json-asof":    o._jsonAsOf = next(); break;
       case "--json-price":   o._jsonPrice = next(); break;
       case "--par":          o._par = next(); break;
+      case "--label":       o._label = next(); break;
+      case "--post":        o._body = next(); break;
+      case "--header": {
+        const h = next(), i = h.indexOf(":");
+        if (i < 0) throw new Error(`--header wants "Name: value", got ${h}`);
+        o._headers = { ...(o._headers || {}), [h.slice(0, i).trim()]: h.slice(i + 1).trim() };
+        break;
+      }
       case "--value-col": o._valueCol = next(); break;
       case "--sheet":     o.sheet = next(); break;
       case "--layout":    o._layout = next(); break;
@@ -840,11 +897,15 @@ function pending(o) {
   if (o._row != null)      { p.row = o._row; delete o._row; }
   if (o._jsonPath != null)    { p.jsonPath = o._jsonPath; delete o._jsonPath; }
   if (o._jsonTenor != null)   { p.jsonTenor = o._jsonTenor; delete o._jsonTenor; }
+  if (o._jsonTenorDays != null) { p.jsonTenorDays = o._jsonTenorDays; delete o._jsonTenorDays; }
   if (o._jsonValue != null)   { p.jsonValue = o._jsonValue; delete o._jsonValue; }
   if (o._jsonMatures != null) { p.jsonMatures = o._jsonMatures; delete o._jsonMatures; }
   if (o._jsonAsOf != null)    { p.jsonAsOf = o._jsonAsOf; delete o._jsonAsOf; }
   if (o._jsonPrice != null)   { p.jsonPrice = o._jsonPrice; delete o._jsonPrice; }
   if (o._par != null)         { p.par = o._par; delete o._par; }
+  if (o._label != null)       { p.label = o._label; delete o._label; }
+  if (o._body != null)        { p.body = o._body; delete o._body; }
+  if (o._headers != null)     { p.headers = o._headers; delete o._headers; }
   return p;
 }
 
@@ -883,15 +944,22 @@ async function main() {
   const claim  = (leg, pts) => { for (const [t] of pts) owner[leg].set(t, curve.sources.length); };
   let failures = 0;
 
-  for (const s of sources) {
+  /**
+   * Read one source into the merge. Returns false if it contributed nothing, so
+   * the caller can try a fallback: the live Makam endpoint sits behind a WAF that
+   * may refuse a CI runner, and a daily job that dies on that is worse than one
+   * that keeps yesterday's committed snapshot.
+   */
+  const consumeSource = async (s) => {
     const label = s.url || s.file;
     try {
-      const raw = s.url ? await fetchBuffer(s.url) : fs.readFileSync(s.file);
+      const raw = s.url ? await fetchBuffer(s.url, { body: s.body, headers: s.headers })
+                        : fs.readFileSync(s.file);
       const isBook = looksBinaryWorkbook(raw) || BIN_RE.test(label);
 
       if (isBook) {
         const all = await readSpreadsheet(raw);
-        if (args.dump) { console.log(`\n=== ${label} ===`); dumpSheets(all); continue; }
+        if (args.dump) { console.log(`\n=== ${label} ===`); dumpSheets(all); return true; }
 
         const chosen = selectSheets(all, s.sheet ?? args.sheet);
         let got = 0;
@@ -899,7 +967,6 @@ async function main() {
           const res = rowsToCurveAuto(sh.rows, s);
           if (!res.points.length) {
             if (chosen.length === 1) {
-              failures++;
               console.error(`  FAIL ${label} [${sh.name}] → ${JSON.stringify(res.diag)}`);
               console.error("       run with --dump to see the sheet layout");
             }
@@ -932,18 +999,17 @@ async function main() {
           }
         }
         if (!got && chosen.length > 1) {
-          failures++;
           console.error(`  FAIL ${label} → no sheet yielded a curve (${all.map(x => x.name).join(", ")})`);
           console.error("       run with --dump to see the sheet layout");
         }
-        continue;
+        return got > 0;
       }
 
       const text = raw.toString("utf8");
       if (args.dump) {
         console.log(`\n=== ${label} (text) ===`);
         dumpSheets([{ name: "text", rows: parseDelimited(text) }]);
-        continue;
+        return true;
       }
       const res = parseSource(text, s);
 
@@ -979,21 +1045,23 @@ async function main() {
         if (res.curve.asOf) curve.asOf = res.curve.asOf;
         console.log(`  ok  ${label} → curve.json passthrough` +
           (prior.length ? ` (${prior.length} source record(s) carried)` : ""));
-        continue;
+        return true;
       }
 
       if (!res.points.length) {
-        failures++;
         console.error(`  FAIL ${label} → no points. ${JSON.stringify(res.diag)}`);
         console.error(`       first 300 chars: ${JSON.stringify(text.slice(0, 300))}`);
-        continue;
+        return false;
       }
       const { points, note } = normaliseScale(res.points);
       for (const [t, r] of points) merged[s.leg].set(t, r);
       claim(s.leg, points);
       noteAsOf(curve, res.diag?.asOf);
       curve.sources.push({
-        label: path.basename(label), leg: s.leg,
+        // An API path is not a name: the page keys a series' colour and title off
+        // this label, so an endpoint called "securitiesmarketdata" loses both.
+        // `label` in the config says what the data IS.
+        label: s.label || path.basename(label), leg: s.leg,
         asOf: normaliseDate(res.diag?.asOf || ""), range: res.diag?.range || null,
         points: points.length, detail: res.diag?.rowLabel || null
       });
@@ -1005,10 +1073,22 @@ async function main() {
         console.log(`      diag ${JSON.stringify(res.diag)}`);
         console.log("      " + points.map(([t, r]) => `${round(t)}y=${r}`).join("  "));
       }
+      return true;
     } catch (e) {
-      failures++;
       console.error(`  FAIL ${label} → ${e.message}`);
+      return false;
     }
+  };
+
+  for (const s of sources) {
+    let ok = await consumeSource(s);
+    if (!ok && s.fallback) {
+      const alt = s.fallback.url || s.fallback.file;
+      console.error(`       falling back to ${alt}`);
+      ok = await consumeSource({ leg: s.leg, ...s.fallback });
+      // A fallback that also fails is still one failed leg, not two.
+    }
+    if (!ok) failures++;
   }
 
   if (args.dump) return;               // inspection only, nothing to write

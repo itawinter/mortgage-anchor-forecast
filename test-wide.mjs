@@ -1,5 +1,6 @@
 import X from 'xlsx';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { rowsToCurveWide, rowsToCurveAuto, normaliseScale, readSpreadsheet, parseTenor } from './refresh-curve.mjs';
 let pass=0,fail=0;
 const eq=(n,g,w)=>{const a=JSON.stringify(g),b=JSON.stringify(w);
@@ -79,6 +80,32 @@ const nom = rowsToCurveAuto(sheets[0].rows), real = rowsToCurveAuto(sheets[1].ro
 eq('xls nominal', nom.points, [[0.25,3.4],[0.5,3.3],[1,3.25],[2,3.4],[3,3.6],[5,3.8],[10,4.1],[20,4.4],[30,4.45]]);
 eq('xls real', real.points, [[1,1.15],[2,1.3],[5,1.7],[10,2],[30,2.3]]);
 eq('xls asOf survives binary round-trip', nom.diag.asOf, '2026-07-31');
+
+// A workbook written from Date objects round-trips through SheetJS's own
+// timezone handling symmetrically, which hides a shift. The BOI files store bare
+// integer serials with a date format, so build one of those and read it back
+// under timezones either side of UTC: the observation date must not move.
+console.log('\n# date serials read the same in every timezone');
+{
+  const ws = X.utils.aoa_to_sheet([['Date',1,2,10],[null,3.25,3.40,4.10]]);
+  ws.A2 = { t:'n', v:46234, z:'dd/mm/yyyy' };          // 2026-07-31, midnight
+  const wb2 = X.utils.book_new();
+  X.utils.book_append_sheet(wb2, ws, 'Nominal');
+  X.writeFile(wb2, 'fixture-serial.xls', { bookType:'biff8' });
+
+  const read = tz => execFileSync(process.execPath, ['--input-type=module','-e', `
+      import fs from 'node:fs';
+      const { readSpreadsheet, rowsToCurveAuto } = await import('${import.meta.url}'.replace(/test-wide\\.mjs$/,'refresh-curve.mjs'));
+      const s = await readSpreadsheet(fs.readFileSync('fixture-serial.xls'));
+      process.stdout.write(String(rowsToCurveAuto(s[0].rows).diag.asOf));
+    `], { env: { ...process.env, TZ: tz }, encoding: 'utf8' }).trim();
+
+  eq('UTC',              read('UTC'),              '2026-07-31');
+  eq('Asia/Jerusalem',   read('Asia/Jerusalem'),   '2026-07-31');
+  eq('America/New_York', read('America/New_York'), '2026-07-31');
+  eq('Pacific/Auckland', read('Pacific/Auckland'), '2026-07-31');
+  fs.unlinkSync('fixture-serial.xls');
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

@@ -1,0 +1,55 @@
+{
+  "_comment": [
+    "The one place the pipeline's sources are declared. `npm run refresh` and",
+    "the scheduled job both read this file, so a URL that moves is fixed here",
+    "and nowhere else. Keys are refresh-curve.mjs's own option names (the CLI's",
+    "--json-path is jsonPath here); order matters, because a later source wins",
+    "a shared maturity.",
+    "",
+    "Makam is listed LAST so it owns the 1y overlap, where it reads ~3.28%",
+    "against shcd08's ~3.21%. Reversing the order silently changes the 1y point",
+    "and the whole short end's attribution."
+  ],
+  "nominal": [
+    {
+      "url": "https://www.boi.org.il/boi_files/Statistics/shcd08_e.xls"
+    },
+    {
+      "_comment": [
+        "TASE's securities table, filtered to T-Bills (cl1 6 is the T-Bills",
+        "group from security/securitiesclassifications; lang 2 and pageNum are",
+        "both required — omit either and the response is an empty list rather",
+        "than an error). Accept-Language is what the WAF actually checks:",
+        "without it the endpoint answers 403 to an otherwise identical request.",
+        "",
+        "Yield and day count both come from TASE rather than being derived: the",
+        "two were computed there at the same instant, so they agree with each",
+        "other. Deriving the tenor from RedemptionDate instead means guessing",
+        "which day TASE measured from, and at the front of the curve one day of",
+        "day-count error is worth ~90bp.",
+        "",
+        "If the WAF refuses the runner, the committed snapshot is used instead."
+      ],
+      "label": "makam · TASE t_bills (live)",
+      "url": "https://api.tase.co.il/api/security/securitiesmarketdata",
+      "body": "{\"dType\":1,\"lang\":2,\"cl1\":\"6\",\"cl2\":\"0\",\"pageNum\":1}",
+      "headers": {
+        "Accept": "application/json",
+        "Accept-Language": "he-IL",
+        "Origin": "https://market.tase.co.il",
+        "Referer": "https://market.tase.co.il/he/market_data/securities/data/t_bills",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+      },
+      "jsonPath": "Items",
+      "jsonTenorDays": "DaysUntilRedemption",
+      "jsonValue": "BrutoYield",
+      "jsonAsOf": "TradeDate",
+      "fallback": { "file": "makam-short-end.csv" }
+    }
+  ],
+  "real": [
+    {
+      "url": "https://www.boi.org.il/boi_files/Statistics/shcd07_e.xls"
+    }
+  ]
+}

@@ -33,26 +33,20 @@ jobs:
       - name: Install SheetJS
         run: npm install --no-audit --no-fund
 
-      # The two BOI URLs are the ONLY unverified part of this pipeline: the
-      # sandbox this was built in could not reach boi.org.il, so shcd07's URL is
-      # inferred from shcd08's by symmetry. If either is wrong the step below
-      # fails loudly — refresh-curve.mjs exits non-zero when a source does not
-      # parse — and nothing is committed. Fix the URL here, in one place.
+      # Every source, URL and field name lives in sources.json — one place, read
+      # by this job and by `npm run refresh` alike, so a URL that moves is fixed
+      # once. All three were verified live on 2026-08-01.
+      #
+      # If a source does not parse, refresh-curve.mjs exits non-zero and nothing
+      # is committed. The exception is the Makam leg, which declares a fallback
+      # to the committed snapshot: it comes from an API behind a WAF that may
+      # well refuse a CI runner, and a stale short end beats a dead job. Watch
+      # the log for "falling back" — that is the signal the live pull stopped
+      # working, and it will not fail the run.
       - name: Pull the curves
-        env:
-          SHCD08: https://www.boi.org.il/boi_files/Statistics/shcd08_e.xls
-          SHCD07: https://www.boi.org.il/boi_files/Statistics/shcd07_e.xls
         run: |
           set -euo pipefail
-          node refresh-curve.mjs \
-            --url "$SHCD08" \
-            --real --url "$SHCD07" \
-            --nominal --file makam-short-end.csv \
-            --out curve.next.json \
-            --verbose
-          # Makam is listed LAST so it owns the 1y overlap, where it reads 3.28%
-          # against shcd08's 3.21%. Reversing the order silently changes the 1y
-          # point and the whole short end's attribution.
+          node refresh-curve.mjs --config sources.json --out curve.next.json --verbose
 
       # A partial success is the dangerous case: if only one leg parsed, the file
       # would be written and would drop a curve the page needs. Check before

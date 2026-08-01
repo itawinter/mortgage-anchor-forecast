@@ -47,9 +47,6 @@ eq('via parseSource', parseSource(JSON.stringify(listing),
    {jsonPath:'d.Items',jsonMatures:'Redemption',jsonValue:'Yield',asOf:'2026-07-31'}).points.length, 4);
 eq('without fields, untouched', parseSource(JSON.stringify([[1,3.25]])).points, [[1,3.25]]);
 
-console.log(`\n${pass} passed, ${errs.length} failed`);
-if (errs.length) { console.log('ISSUES:\n  '+errs.join('\n  ')); process.exit(1); }
-
 console.log('\n# price -> yield, against the real pasted TASE row');
 // מ.ק.מ 217 · last price 98.37 agorot · the table has NO yield column.
 const tase = { Items: [{ Name:'מ.ק.מ 217', Symbol:'מקמ217', Price:'98.37', Redemption:'2027-02-03' }] };
@@ -73,3 +70,65 @@ eq('a month of date error is worth tens of bp', spreadBp > 30, true);
 console.log('\n# a price with no tenor cannot be converted, and is not guessed');
 eq('no tenor -> skipped', parseJsonRows({Items:[{Price:'98.37'}]},
    {jsonPrice:'Price',jsonMatures:'Nope',asOf:'2026-08-01'}).points, []);
+
+// ---------------------------------------------------------------------------
+// The live TASE endpoint, verified 2026-08-01. Two real rows from
+// POST api.tase.co.il/api/security/securitiesmarketdata, unedited. The visible
+// table on the site has neither a yield nor a redemption date; the JSON behind
+// it has both, plus a day count.
+const live = { TradeDate: '31/07/2026', TotalRec: 12, Items: [
+  { LastRate: 98.37, BaseRate: 98.36, BrutoYield: 3.27,
+    RedemptionDate: '03/02/2027', DaysUntilRedemption: 186, TradeDate: null },
+  { LastRate: 97.04, BaseRate: 97.03, BrutoYield: 3.28,
+    RedemptionDate: '07/07/2027', DaysUntilRedemption: 340, TradeDate: null }
+] };
+
+console.log('\n# the observation date comes off the envelope, not the rows');
+const env = parseJsonRows(live, { jsonPath:'Items', jsonTenorDays:'DaysUntilRedemption',
+                                  jsonValue:'BrutoYield', jsonAsOf:'TradeDate' });
+// TASE puts one TradeDate beside the array and leaves the per-row field null.
+// Reading only the row gave today's date, which silently moved every tenor.
+eq('dd/mm/yyyy envelope date, normalised', env.diag.asOf, '2026-07-31');
+eq('not today', env.diag.asOf !== new Date().toISOString().slice(0,10), true);
+eq('day count -> tenor', env.points.map(p=>+p[0].toFixed(6)),
+   [+(186/365).toFixed(6), +(340/365).toFixed(6)]);
+eq('yield read as published', env.points.map(p=>p[1]), [3.27, 3.28]);
+eq('diag names the day-count field', env.diag.tenorFrom, 'days:DaysUntilRedemption');
+
+console.log('\n# a row-level date still works when there is no envelope one');
+eq('falls back to the first record',
+   parseJsonRows({ Items:[{ Rate:'3.27', t:'6M', TradeDate:'31/07/2026' }] },
+     { jsonPath:'Items', jsonTenor:'t', jsonValue:'Rate', jsonAsOf:'TradeDate' }).diag.asOf,
+   '2026-07-31');
+
+console.log('\n# the two independent readings of the same bill must agree');
+// Price->yield and TASE's own BrutoYield are computed from different numbers.
+// Over the same day count they agree to ~1bp, which is what makes both the
+// conversion and the published yield credible. They are compared at the SAME
+// tenor deliberately: derive the tenor from the redemption date instead and the
+// disagreement is a day of day-count, not a yield error.
+const fromPrice = parseJsonRows(live, { jsonPath:'Items',
+  jsonTenorDays:'DaysUntilRedemption', jsonPrice:'LastRate', par:100 });
+const gaps = fromPrice.points.map((p,i) => Math.abs(p[1] - env.points[i][1]));
+console.log(`  price-implied ${fromPrice.points.map(p=>p[1].toFixed(3)).join(', ')}` +
+            ` vs published ${env.points.map(p=>p[1]).join(', ')}`);
+eq('within 2bp on both bills', gaps.every(g => g < 0.02), true);
+// And the 6m bill still lands where makam.xlsx put it, from a live pull: 3.27%
+// at 186d against the snapshot's 3.29% at 6m. 2bp, across two publishers, two
+// observation dates a day apart and tenors a few days apart — which is the
+// agreement that makes reading this endpoint as a Makam curve credible.
+eq('186d bill within 3bp of makam.xlsx at 6m', Math.abs(env.points[0][1] - 3.29) <= 0.03, true);
+
+console.log('\n# a day count beats a redemption date when both are given');
+// One day of error at the very front of the curve is worth ~90bp, so when the
+// source hands over its own count, that is the one to use.
+eq('tenorDays wins', parseJsonRows(live,
+   { jsonPath:'Items', jsonTenorDays:'DaysUntilRedemption',
+     jsonMatures:'RedemptionDate', jsonValue:'BrutoYield', asOf:'2026-07-31' }
+   ).diag.tenorFrom, 'days:DaysUntilRedemption');
+eq('a zero or missing count is skipped, not treated as spot',
+   parseJsonRows({Items:[{d:0,y:'3.3'},{d:null,y:'3.3'}]},
+     {jsonPath:'Items',jsonTenorDays:'d',jsonValue:'y'}).points, []);
+
+console.log(`\n${pass} passed, ${errs.length} failed`);
+if (errs.length) { console.log('ISSUES:\n  '+errs.join('\n  ')); process.exit(1); }

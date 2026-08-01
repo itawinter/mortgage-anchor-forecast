@@ -4,6 +4,10 @@ import * as XLSX from 'xlsx';
 import { JSDOM } from 'jsdom';
 const dom = new JSDOM(''); globalThis.DOMParser = dom.window.DOMParser;
 const { readWorkbook } = await import('./xls-lite.mjs');
+// SheetJS dates are local, xls-lite's are UTC. Without re-anchoring the
+// reference side, every date cell "differs" by a day east of UTC and this
+// comparison fails on a machine in Israel for reasons that aren't about xls-lite.
+const { localDateToUTC } = await import('./refresh-curve.mjs');
 
 const cell = v => v instanceof Date ? v.toISOString().slice(0,10)
   : typeof v === 'number' ? +v.toFixed(9) : (v == null ? null : String(v));
@@ -25,7 +29,8 @@ for (const f of FIXTURES) {
 
   const wb = XLSX.read(buf, { type:'buffer', cellDates:true });
   const ref = wb.SheetNames.map(n => ({ name:n,
-    rows: XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, raw:true, defval:null }) }));
+    rows: XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, raw:true, defval:null })
+      .map(row => row.map(localDateToUTC)) }));
 
   eq('sheet names', mine.map(s=>s.name), ref.map(s=>s.name));
   for (let i=0;i<ref.length;i++) {

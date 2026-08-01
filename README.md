@@ -18,8 +18,12 @@ page picks it up on the next load. No download, no upload, no rebuild.
 ```
 .github/workflows/refresh.yml     weekdays 04:00 UTC (07:00 Israel)
         │
-        ├─ node refresh-curve.mjs --url <shcd08> --real --url <shcd07>
-        │                         --nominal --file makam-short-end.csv
+        ├─ node refresh-curve.mjs --config sources.json
+        │        │
+        │        ├─ shcd08_e.xls          nominal zero curve, 1y–15y
+        │        ├─ shcd07_e.xls          real (Galil) zero curve, 1y–20y
+        │        └─ TASE t_bills API      Makam short end, live · falls back
+        │                                 to makam-short-end.csv
         │
         ├─ sanity-check the result   both legs present? short end? long end?
         │                            rates inside -5..25%?
@@ -30,61 +34,90 @@ page picks it up on the next load. No download, no upload, no rebuild.
 ```
 
 Same-origin, so no CORS is involved — which is the whole reason this shape is
-needed. A browser cannot fetch `boi.org.il` directly: those servers do not send
-`Access-Control-Allow-Origin`, so the data has to be re-served from your own
-origin. That is what the commit does.
+needed. A browser cannot fetch `boi.org.il` or `market.tase.co.il` directly:
+those servers do not send `Access-Control-Allow-Origin`, so the data has to be
+re-served from your own origin. That is what the commit does.
 
-**Order matters in that command.** Later sources win a shared maturity, so Makam
-is listed last and owns the 1y overlap, where it reads 3.28% against shcd08's
-3.21%. Reversing it silently changes the 1y point and the attribution of the
-whole short end.
+**Every source lives in `sources.json`** — URLs, request bodies, field names, in
+one file read by both the scheduled job and `npm run refresh`. A URL that moves
+is fixed once.
+
+**Order matters in that file.** Later sources win a shared maturity, so Makam is
+listed last and owns the short end. Reversing it silently changes the attribution
+of every maturity the two sources share.
 
 **A partial pull is the dangerous case**, not a total failure. If only one leg
 parsed, a file would still be written and would drop a curve the page needs — so
 the workflow validates before `curve.json` is replaced, and commits nothing if
 the check fails. The run goes red instead.
 
-## Two things are not yet wired, and both are visible
+## The Makam short end, and the endpoint behind it
 
-**1. The BOI URLs are inferred, not verified.** This was built in a sandbox that
-could not reach `boi.org.il`, so `shcd07_e.xls`'s URL is taken by symmetry from
-`shcd08_e.xls`'s. If either is wrong the refresh job **fails loudly** — the
-refresher exits non-zero when a source will not parse — and nothing is
-committed. Fix it in one place, `env:` in `refresh.yml`.
+The short end is a live pull from the TASE securities API — the JSON the T-bills
+page fetches for its own table:
 
-Watch the first scheduled run (or trigger it from the Actions tab). Green means
-both URLs are right.
-
-**2. The Makam short end is a snapshot, not a live pull.** `makam-short-end.csv`
-holds the 1–12 month yields as of 2026-07-30. It is re-read every run, so those
-points never change until you replace them.
-
-To make it live, swap one line in `refresh.yml`:
-
-```yaml
-  --nominal --file makam-short-end.csv        # ← replace this
-  --nominal --url "<endpoint>" --json-matures <field> --json-price <field>
+```
+POST https://api.tase.co.il/api/security/securitiesmarketdata
+     {"dType":1,"lang":2,"cl1":"6","cl2":"0","pageNum":1}
 ```
 
-Bear in mind what the TASE T-bill table actually contains: **prices, not
-yields**, and **no redemption date column**. A Makam is a zero-coupon bill
-redeemed at par, so the rate is computed exactly — `y = (par/price)^(1/T) − 1`,
-which is `--json-price`. But the redemption date cannot be approximated: the
-same 98.37 price implies **3.314%** redeeming 1 February and **2.884%**
-redeeming 28 February, a **43bp** spread across one month. Take the date from a
-real date field, not by decoding the month out of the security name.
+Three things about it are worth knowing before you touch it:
+
+- **`cl1: "6"` is the T-Bills group**, from
+  `GET security/securitiesclassifications?lang=1`. `lang: 2` and `pageNum` are
+  both required — omit either and the response is an empty list rather than an
+  error, which is exactly the failure mode that looks like "no bills today".
+- **`Accept-Language` is what the WAF checks.** Without that header the endpoint
+  answers `403` to an otherwise identical request. The other headers in
+  `sources.json` (Origin, Referer, a browser UA) are also required.
+- **The JSON has what the visible table lacks.** The rendered table shows a price
+  and no yield or redemption date, which makes a price→yield conversion look
+  mandatory. The payload behind it carries `BrutoYield`, `RedemptionDate` **and**
+  `DaysUntilRedemption`.
+
+**Yield and day count are both taken from TASE, not derived.** They were computed
+there at the same instant, so they agree with each other. Deriving the tenor from
+`RedemptionDate` instead means guessing which day TASE measured from, and at the
+front of the curve one day of day-count error is worth about **90bp** — the
+shortest bill on any given day is a few days from redemption, where the
+annualisation multiplier is enormous. The price→yield path is still implemented
+(`--json-price`, `y = (par/price)^(1/T) − 1`) and agrees with the published yield
+to ~1bp over the same day count; `test-json-rows.mjs` asserts that agreement, so
+the two readings cannot drift apart unnoticed.
+
+**Cross-checked before being trusted:** the 186-day bill priced at 98.37 reads
+3.27% live, against 3.29% at 6m in the `makam.xlsx` snapshot from the day before —
+2bp, across two publishers and two observation dates.
+
+**If TASE refuses, the snapshot is used.** The Makam source declares
+`fallback: makam-short-end.csv`, so a WAF that blocks the CI runner leaves the
+short end stale rather than killing the job. `falling back to …` in the Actions
+log is the signal that the live pull stopped working; it will not turn the run
+red, so watch for it.
 
 The page itself warns when the two BOI curves have gone stale, using the
 published release calendar — so a broken refresh surfaces on the page, not just
-in the Actions log.
+in the Actions log. Makam is exempt: it is daily, on no such schedule.
+
+### One consequence worth knowing
+
+Real bills mature on real dates, so the short end now ends at the longest bill —
+around 0.93y, not exactly 1y. The 1y point therefore comes from `shcd08`'s
+mid-month average rather than from a snapshot's rounded `12M` row, and the two
+disagree by a few bp (3.28% at 0.93y against 3.21% at 1y as of 2026-07-31). The
+page draws that stretch grey, as "between two known sources", which is what it
+is: a live quote and a mid-month average, a fortnight apart. Forward rates
+amplify the seam into a visible step near 12m on the anchor path. It is a data
+seam, not a market feature — and not smoothed, deliberately.
 
 ## Local use
 
 ```bash
 npm install
-npm run refresh     # pull the curves, rewrite curve.json
-npm run serve       # http://localhost:8080
-npm test            # parser, injection and mapping tests
+npm run refresh          # pull the curves from sources.json, rewrite curve.json
+npm run refresh:offline  # same, but the Makam snapshot instead of the live API
+npm run serve            # http://localhost:8080
+npm test                 # parser, injection and mapping tests
 ```
 
 `npm run serve` matters: opening `index.html` from the filesystem works, but the
@@ -97,10 +130,11 @@ baked-in curve. Serving it over HTTP is what exercises the real path.
 |---|---|
 | `index.html` | the calculator — one self-contained file, no build step, no dependencies |
 | `curve.json` | the current curve, rewritten by the scheduled job |
-| `makam-short-end.csv` | the 1–12m short end, a snapshot pending a live endpoint |
+| `sources.json` | every source, URL, request body and field name — the one place they are declared |
+| `makam-short-end.csv` | the 1–12m short end as of 2026-07-30, the fallback if the live pull is refused |
 | `refresh-curve.mjs` | fetches and parses the sources, merges them, writes `curve.json` |
 | `xls-lite.mjs` | dependency-free `.xls`/`.xlsx` reader; inlined into the page so it can read a workbook you drop on it |
-| `test-*.mjs` | 89 assertions over the parsers, the injector and the workbook reader |
+| `test-*.mjs` | 109 assertions over the parsers, the injector and the workbook reader |
 
 The page also still accepts files by hand — one button per series in the **Zero
 curve** panel — which is how you check a new release before the job runs, or
