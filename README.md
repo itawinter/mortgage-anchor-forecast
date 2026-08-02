@@ -1,5 +1,14 @@
 # Forward Mortgage Anchor Calculator
 
+> ## ⚠️ **Not financial advice**
+>
+> **This is an illustrative calculation from public bond-market data, and it may
+> contain errors — in the data, in the model, or in both. Nothing here is a
+> recommendation to take, keep, or change any mortgage or other financial
+> product. Verify every figure with your bank and a licensed advisor before you
+> act on it. Use of this project is entirely at your own risk and on your own
+> responsibility.**
+
 ### 👉 [Open the calculator](https://itawinter.github.io/mortgage-anchor-forecast/)
 
 **What would your Israeli mortgage cost if you took the same track out later?**
