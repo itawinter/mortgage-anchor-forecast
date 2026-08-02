@@ -177,7 +177,7 @@ a { color: var(--primary); text-decoration-thickness: 1px; text-underline-offset
   flex-wrap: wrap;
   gap: 20px;
 }
-.headline-figure .figure-text { text-align: right; }
+.headline-figure .figure-text { text-align: end; }
 .headline-figure .big {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
@@ -290,7 +290,7 @@ a { color: var(--primary); text-decoration-thickness: 1px; text-underline-offset
 
 /* "optional" marker on a field label. Unmarked means the projection needs it. */
 .opt {
-  margin-left: 6px;
+  margin-inline-start: 6px;
   padding: 1px 5px;
   border: 1px solid var(--line);
   border-radius: 3px;
@@ -306,7 +306,7 @@ a { color: var(--primary); text-decoration-thickness: 1px; text-underline-offset
   color: var(--ink-3);
 }
 .cardnote b { color: var(--ink-2); font-weight: 600; }
-.cardnote .opt { margin-left: 0; }
+.cardnote .opt { margin-inline-start: 0; }
 
 /* A related pair of inputs inside the same card, set off by a rule. */
 .subgroup { padding-top: 14px; border-top: 1px solid var(--line-soft); gap: 8px; }
@@ -343,14 +343,14 @@ fieldset { margin: 0; padding: 0; border: 0; }
   background: var(--panel-2);
   color: var(--ink-2);
   border: 0;
-  border-right: 1px solid var(--line);
+  border-inline-end: 1px solid var(--line);
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
 }
-.seg button:last-child { border-right: 0; }
+.seg button:last-child { border-inline-end: 0; }
 .seg button[aria-pressed="true"] { background: var(--primary); color: var(--panel); }
 
 .chiprow { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -420,8 +420,11 @@ p.tfoot {
   font-size: 0.78rem; color: var(--ink-3); max-width: 78ch;
 }
 table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-th, td { padding: 8px 10px; text-align: right; white-space: nowrap; }
-th:first-child, td:first-child { text-align: left; }
+/* Logical, not physical: `end` is the right edge in English and the left edge in
+   Hebrew, so the figures stay on the outside and the horizon label on the inside
+   in both directions without a second rule. */
+th, td { padding: 8px 10px; text-align: end; white-space: nowrap; }
+th:first-child, td:first-child { text-align: start; }
 thead th {
   font-family: var(--mono);
   font-size: 0.64rem;
@@ -438,6 +441,7 @@ tbody td { border-bottom: 1px solid var(--line-soft); font-family: var(--mono); 
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr.is-today td { background: var(--primary-soft); }
 tbody tr.is-today td:first-child { box-shadow: inset 2px 0 0 var(--primary); }
+[dir="rtl"] tbody tr.is-today td:first-child { box-shadow: inset -2px 0 0 var(--primary); }
 td.delta-up   { color: var(--rising); }
 td.delta-down { color: var(--falling); }
 td.lead { font-family: var(--sans); color: var(--ink); }
@@ -445,6 +449,9 @@ td.is-adj { background: var(--primary-soft); }
 td.is-adj strong { color: var(--primary); }
 td .alt { color: var(--ink-3); }
 td .alt::before { content: "→ "; }
+/* The arrow means "and adjusted, that reads", so it has to follow the reading
+   direction — pointing right in Hebrew would send the eye back at the number. */
+[dir="rtl"] td .alt::before { content: "← "; }
 
 /* ============================================================
    Charts
@@ -487,7 +494,7 @@ canvas.plot { display: block; width: 100%; height: 260px; touch-action: pan-y; }
   border-radius: 2px;
   transform: translateY(-1px);
 }
-.tip .tip-n { flex: 1 1 auto; padding-right: 10px; }
+.tip .tip-n { flex: 1 1 auto; padding-inline-end: 10px; }
 .tip .tip-r b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
 
 /* The curve chart sits in the 344px rail, where 260px of height would make it
@@ -502,7 +509,7 @@ canvas.plot { display: block; width: 100%; height: 260px; touch-action: pan-y; }
 }
 .legend i {
   display: inline-block; width: 16px; height: 3px;
-  margin-right: 6px; vertical-align: 2px; border-radius: 2px;
+  margin-inline-end: 6px; vertical-align: 2px; border-radius: 2px;
 }
 
 /* ============================================================
@@ -512,15 +519,16 @@ canvas.plot { display: block; width: 100%; height: 260px; touch-action: pan-y; }
 .prose p { margin: 0 0 12px; color: var(--ink-2); font-size: 0.9rem; }
 .prose p:last-child { margin-bottom: 0; }
 .prose strong { color: var(--ink); font-weight: 600; }
-.prose ul { margin: 0 0 12px; padding-left: 20px; color: var(--ink-2); font-size: 0.9rem; }
+.prose ul { margin: 0 0 12px; padding-inline-start: 20px; color: var(--ink-2); font-size: 0.9rem; }
 .prose li { margin-bottom: 6px; }
 .prose li:last-child { margin-bottom: 0; }
 .formula {
   margin: 6px 0 16px;
   padding: 16px 14px;
   background: var(--panel-2);
-  border-left: 2px solid var(--primary);
-  border-radius: 0 5px 5px 0;
+  border-inline-start: 2px solid var(--primary);
+  border-start-end-radius: 5px;
+  border-end-end-radius: 5px;
   color: var(--ink);
   overflow-x: auto;
 }
@@ -584,8 +592,9 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
   display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
   padding: 8px 11px;
   background: var(--panel-2);
-  border-left: 2px solid var(--ink-3);
-  border-radius: 0 5px 5px 0;
+  border-inline-start: 2px solid var(--ink-3);
+  border-start-end-radius: 5px;
+  border-end-end-radius: 5px;
   font-family: var(--mono); font-size: 0.72rem; color: var(--ink-2);
 }
 .prov { flex-direction: column; gap: 4px; }
@@ -594,9 +603,9 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
 .prov .leg b { color: var(--primary); font-weight: 500; }
 .prov .leg.is-est b { color: var(--project); }
 .prov .leg.is-est::after { content: " (estimate)"; color: var(--project); }
-.prov .stamp { color: var(--ink-3); margin-left: 8px; }
+.prov .stamp { color: var(--ink-3); margin-inline-start: 8px; }
 .prov .parts {
-  display: block; padding-left: 10px;
+  display: block; padding-inline-start: 10px;
   font-size: 0.94em; color: var(--ink-3); line-height: 1.5;
 }
 
@@ -652,6 +661,56 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
 
 [hidden] { display: none !important; }
 
+/* ============================================================
+   Language
+   ============================================================ */
+.langbtn {
+  padding: 4px 11px;
+  background: var(--panel);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.langbtn:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Figures are not text: a rate, a delta or a payment reads left-to-right in
+   every language, and letting the bidi algorithm reorder "+8 bp" or "3.28% →
+   3.28%" inside an RTL paragraph puts the sign or the arrow on the wrong side.
+   `plaintext` gives each cell its own direction from its first strong character,
+   so Hebrew horizon labels still read RTL while the numbers beside them don't. */
+[dir="rtl"] tbody td,
+[dir="rtl"] .num,
+[dir="rtl"] .tval,
+[dir="rtl"] .big,
+[dir="rtl"] .tip .tip-r b { unicode-bidi: plaintext; }
+
+/* Maths is written left-to-right regardless of the surrounding language, and the
+   brackets in .brack are physical by construction. */
+[dir="rtl"] .formula, [dir="rtl"] .eq { direction: ltr; text-align: left; }
+
+/* Tracking is a Latin device. Hebrew has no case, so the uppercase-with-letter-
+   spacing treatment on labels just pulls the letters apart — נתונים should not
+   read as נ ת ו נ י ם. */
+[dir="rtl"] .eyebrow,
+[dir="rtl"] .field > .lab,
+[dir="rtl"] .subgroup > .sublab,
+[dir="rtl"] .headline-figure .cap,
+[dir="rtl"] thead th,
+[dir="rtl"] .pill,
+[dir="rtl"] .seg button,
+[dir="rtl"] .opt { letter-spacing: normal; }
+
+/* Typed values are data, so they keep their own direction. Without this a
+   maturity list reading "1, 2, 3, 12" comes back as "12 ,3 ,2 ,1". */
+[dir="rtl"] input[type="number"],
+[dir="rtl"] input[type="text"],
+[dir="rtl"] textarea { direction: ltr; text-align: start; }
+
 @media (prefers-reduced-motion: no-preference) {
   .tile .tval, .headline-figure .big { transition: color 140ms ease; }
 }
@@ -688,15 +747,16 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
 
   <header class="masthead">
     <div>
-      <span class="eyebrow">Israel · government curve · forward rates</span>
-      <h1>Forward Mortgage Anchor Calculator</h1>
-      <p class="lede">
+      <span class="eyebrow" data-i18n="mast.eyebrow">Israel · government curve · forward rates</span>
+      <h1 data-i18n="mast.h1">Forward Mortgage Anchor Calculator</h1>
+      <p class="lede" data-i18n-html="mast.lede">
         What would the same mortgage track cost if you took it out later? This reads the
         market-implied answer straight off the Israeli government bond zero curve, using the
         forward-rate identity, and reports the projected <em>anchor</em> (עוגן) at each horizon.
       </p>
     </div>
     <div class="headline-figure">
+      <button type="button" class="langbtn" id="langToggle" aria-label="Switch to Hebrew">עברית</button>
       <canvas id="sparkStrip" aria-hidden="true"></canvas>
       <div class="figure-text">
         <span class="big num" id="hlValue">—</span>
@@ -711,10 +771,10 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
     <div class="rail">
 
       <section class="card" id="cardMortgage">
-        <header><h2>Mortgage</h2><span class="eyebrow">inputs</span></header>
+        <header><h2 data-i18n="mortgage.title">Mortgage</h2><span class="eyebrow" data-i18n="mortgage.eyebrow">inputs</span></header>
         <div class="body field-grid">
 
-          <p class="cardnote">
+          <p class="cardnote" data-i18n-html="mortgage.note">
             Three inputs are needed: the <b>track</b>, the <b>term</b> it prices off — reset
             interval for a variable track, mortgage term for a fixed one — and your
             <b>current anchor</b>. Everything marked <span class="opt">optional</span> already has
@@ -722,27 +782,27 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
           </p>
 
           <label class="field">
-            <span class="lab">Track</span>
+            <span class="lab" data-i18n="lab.track">Track</span>
             <select id="track">
-              <option value="var-unlinked" selected>Variable, unlinked (משתנה לא צמודה)</option>
-              <option value="var-linked">Variable, CPI-linked (משתנה צמודה)</option>
-              <option value="fix-unlinked">Fixed, unlinked (קבועה לא צמודה)</option>
-              <option value="fix-linked">Fixed, CPI-linked (קבועה צמודה)</option>
-              <option value="prime">Prime (פריים)</option>
+              <option value="var-unlinked" selected data-i18n="track.var-unlinked">Variable, unlinked (משתנה לא צמודה)</option>
+              <option value="var-linked" data-i18n="track.var-linked">Variable, CPI-linked (משתנה צמודה)</option>
+              <option value="fix-unlinked" data-i18n="track.fix-unlinked">Fixed, unlinked (קבועה לא צמודה)</option>
+              <option value="fix-linked" data-i18n="track.fix-linked">Fixed, CPI-linked (קבועה צמודה)</option>
+              <option value="prime" data-i18n="track.prime">Prime (פריים)</option>
             </select>
           </label>
 
           <label class="field" id="wrapReset">
-            <span class="lab">Reset interval</span>
+            <span class="lab" data-i18n="lab.reset">Reset interval</span>
             <select id="resetMonths">
-              <option value="12">Every 12 months</option>
-              <option value="18" selected>Every 18 months</option>
-              <option value="24">Every 24 months</option>
-              <option value="30">Every 30 months (2.5y)</option>
-              <option value="60">Every 60 months (5y)</option>
-              <option value="120">Every 120 months (10y)</option>
+              <option value="12" data-i18n="reset.12">Every 12 months</option>
+              <option value="18" selected data-i18n="reset.18">Every 18 months</option>
+              <option value="24" data-i18n="reset.24">Every 24 months</option>
+              <option value="30" data-i18n="reset.30">Every 30 months (2.5y)</option>
+              <option value="60" data-i18n="reset.60">Every 60 months (5y)</option>
+              <option value="120" data-i18n="reset.120">Every 120 months (10y)</option>
             </select>
-            <span class="hint">The anchor is re-read from the curve at each reset, for a term equal to this interval.</span>
+            <span class="hint" data-i18n="hint.reset">The anchor is re-read from the curve at each reset, for a term equal to this interval.</span>
           </label>
 
           <label class="field">
@@ -752,49 +812,49 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
           </label>
 
           <label class="field" id="wrapTerm">
-            <span class="lab"><span id="termLab">Mortgage term (years)</span> <span class="opt" id="termOpt" hidden>optional</span></span>
+            <span class="lab"><span id="termLab" data-i18n="lab.term">Mortgage term (years)</span> <span class="opt" id="termOpt" data-i18n="opt" hidden>optional</span></span>
             <input type="number" id="termYears" value="25" min="1" max="30" step="1">
             <span class="hint" id="termHint">Used for the payment estimate.</span>
           </label>
 
           <label class="field">
-            <span class="lab"><span id="marginLab">Bank margin (%)</span> <span class="opt">optional</span></span>
+            <span class="lab"><span id="marginLab">Bank margin (%)</span> <span class="opt" data-i18n="opt">optional</span></span>
             <input type="number" id="margin" value="1.20" step="0.01">
-            <span class="hint">Fixed spread over the anchor. Constant for the life of the loan; enter a negative number for a prime discount. Affects only the <em>incl. margin</em> and payment columns, never the anchor.</span>
+            <span class="hint" data-i18n-html="hint.margin">Fixed spread over the anchor. Constant for the life of the loan; enter a negative number for a prime discount. Affects only the <em>incl. margin</em> and payment columns, never the anchor.</span>
           </label>
 
           <fieldset class="field">
-            <span class="lab">Calibration <span class="opt">optional</span></span>
-            <div class="seg" role="group" aria-label="Calibration mode">
-              <button type="button" id="calOn"  aria-pressed="true">Anchor to contract</button>
-              <button type="button" id="calOff" aria-pressed="false">Raw curve</button>
+            <span class="lab"><span data-i18n="lab.calibration">Calibration</span> <span class="opt" data-i18n="opt">optional</span></span>
+            <div class="seg" role="group" data-i18n-attr="aria-label:aria.calibration" aria-label="Calibration mode">
+              <button type="button" id="calOn"  aria-pressed="true" data-i18n="btn.calOn">Anchor to contract</button>
+              <button type="button" id="calOff" aria-pressed="false" data-i18n="btn.calOff">Raw curve</button>
             </div>
             <span class="hint" id="calHint"></span>
           </fieldset>
 
           <label class="field">
-            <span class="lab">Horizons (months) <span class="opt">optional</span></span>
+            <span class="lab"><span data-i18n="lab.horizons">Horizons (months)</span> <span class="opt" data-i18n="opt">optional</span></span>
             <input type="text" id="horizons" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 18, 21, 24, 27, 30, 33, 36">
             <div class="chiprow" style="margin-top:6px">
-              <button type="button" class="chip" data-h="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 18, 21, 24, 27, 30, 33, 36">monthly to 1y · quarterly to 3y</button>
-              <button type="button" class="chip" data-h="6, 12, 18, 24">6·12·18·24</button>
-              <button type="button" class="chip" data-h="12, 24, 36, 48, 60">annual to 5y</button>
+              <button type="button" class="chip" data-h="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 18, 21, 24, 27, 30, 33, 36" data-i18n="chip.h1">monthly to 1y · quarterly to 3y</button>
+              <button type="button" class="chip" data-h="6, 12, 18, 24" data-i18n="chip.h2">6·12·18·24</button>
+              <button type="button" class="chip" data-h="12, 24, 36, 48, 60" data-i18n="chip.h3">annual to 5y</button>
             </div>
           </label>
 
           <fieldset class="field subgroup">
-            <span class="sublab">Payment estimate <span class="opt">optional</span></span>
+            <span class="sublab"><span data-i18n="sub.payment">Payment estimate</span> <span class="opt" data-i18n="opt">optional</span></span>
             <div class="row2">
               <label class="field">
-                <span class="lab">Balance (₪)</span>
+                <span class="lab" data-i18n="lab.balance">Balance (₪)</span>
                 <input type="number" id="principal" value="1000000" step="10000" min="0">
               </label>
               <label class="field">
-                <span class="lab">Years left</span>
+                <span class="lab" data-i18n="lab.payYears">Years left</span>
                 <input type="number" id="payYears" value="25" step="1" min="1" max="40">
               </label>
             </div>
-            <span class="hint">
+            <span class="hint" data-i18n="hint.payment">
               Level-payment (שפיצר) monthly instalment at each projected rate, on this balance and
               remaining term. Leave the balance at zero to drop the payment column.
             </span>
@@ -804,12 +864,12 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
 
       <section class="card" id="cardCurve">
         <header>
-          <h2>Zero curve</h2>
-          <span class="eyebrow">the data behind the forecast</span>
+          <h2 data-i18n="curve.title">Zero curve</h2>
+          <span class="eyebrow" data-i18n="curve.eyebrow">the data behind the forecast</span>
         </header>
         <div class="body field-grid">
 
-          <p class="cardnote">
+          <p class="cardnote" data-i18n-html="curve.note">
             The market data the whole projection is read off — <b>not</b> a result. Every anchor in
             the table above is a forward rate computed from these two curves, so this plot is here
             to show what went in, and to make it obvious when the wrong file has been loaded.
@@ -823,14 +883,13 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
           <div class="legend" id="curveLegend"></div>
 
           <div class="dropzone" id="dropzone">
-            <span>Drop a Bank of Israel workbook, a CSV, or a <code class="k">curve.json</code> here —
-            it is routed to whichever series it matches.</span>
+            <span data-i18n-html="drop.text">Drop a Bank of Israel workbook, a CSV, or a <code class="k">curve.json</code> here — it is routed to whichever series it matches.</span>
           </div>
 
           <fieldset class="field subgroup">
-            <span class="sublab">Data sources</span>
+            <span class="sublab" data-i18n="sub.sources">Data sources</span>
             <div class="srcgrid" id="srcGrid"></div>
-            <span class="hint">
+            <span class="hint" data-i18n-html="hint.sources">
               Download the current tables from the Bank of Israel:
               <a href="https://www.boi.org.il/en/economic-roles/statistics/bonds-and-central-bank-bills-makam/bonds-and-central-bank-bills-makam-yields-to-maturity/#mainContent"
                  target="_blank" rel="noopener noreferrer">Bonds and MAKAM — yields to maturity</a>.
@@ -845,30 +904,30 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
           <div class="prov" id="provenance" hidden></div>
 
           <div class="chiprow">
-            <button type="button" class="chip" id="resetCurve">reset to built-in</button>
-            <button type="button" class="chip" id="togglePaste">edit / paste points</button>
+            <button type="button" class="chip" id="resetCurve" data-i18n="chip.reset">reset to built-in</button>
+            <button type="button" class="chip" id="togglePaste" data-i18n="chip.paste">edit / paste points</button>
           </div>
 
           <label class="field" id="pasteWrap" hidden>
-            <span class="lab">Maturity / rate pairs</span>
+            <span class="lab" data-i18n="lab.paste">Maturity / rate pairs</span>
             <textarea id="pasteBox" rows="9" placeholder="0.25  3.40&#10;1y    3.25&#10;18m   3.30&#10;2     3.40&#10;10    4.10"></textarea>
-            <span class="hint">Loaded with the curve selected below — edit it, or paste your own over it. One pair per line, any separator. <code class="k">m</code> / <code class="k">mo</code> is read as months, <code class="k">y</code> as years, bare numbers as years.</span>
+            <span class="hint" data-i18n-html="hint.paste">Loaded with the curve selected below — edit it, or paste your own over it. One pair per line, any separator. <code class="k">m</code> / <code class="k">mo</code> is read as months, <code class="k">y</code> as years, bare numbers as years.</span>
             <div class="chiprow" style="margin-top:6px">
               <select id="pasteLeg" style="width:auto">
-                <option value="nominal" selected>Unlinked curve</option>
-                <option value="real">CPI-linked curve</option>
+                <option value="nominal" selected data-i18n="leg.nominal.curve">Unlinked curve</option>
+                <option value="real" data-i18n="leg.real.curve">CPI-linked curve</option>
               </select>
-              <button type="button" class="chip" id="applyPaste">replace that curve</button>
+              <button type="button" class="chip" id="applyPaste" data-i18n="chip.applyPaste">replace that curve</button>
             </div>
           </label>
 
           <label class="field">
-            <span class="lab">Interpolation</span>
+            <span class="lab" data-i18n="lab.interp">Interpolation</span>
             <select id="interp">
-              <option value="mono" selected>Monotone cubic on zero rates</option>
-              <option value="loglin">Log-linear on discount factors</option>
+              <option value="mono" selected data-i18n="interp.mono">Monotone cubic on zero rates</option>
+              <option value="loglin" data-i18n="interp.loglin">Log-linear on discount factors</option>
             </select>
-            <span class="hint">Monotone cubic is smooth and shape-preserving. Log-linear gives piecewise-constant forwards — the market-standard convention.</span>
+            <span class="hint" data-i18n="hint.interp">Monotone cubic is smooth and shape-preserving. Log-linear gives piecewise-constant forwards — the market-standard convention.</span>
           </label>
         </div>
       </section>
@@ -882,7 +941,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
       <div class="tiles" id="tiles"></div>
 
       <section class="card" id="cardPath">
-        <header><h2>Anchor path</h2><span class="eyebrow">forward-implied, every horizon</span></header>
+        <header><h2 data-i18n="path.title">Anchor path</h2><span class="eyebrow" data-i18n="path.eyebrow">forward-implied, every horizon</span></header>
         <div class="chartbox"><canvas id="pathChart" class="plot"></canvas></div>
         <div class="legend" id="pathLegend"></div>
       </section>
@@ -905,18 +964,18 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
            so it sits at the foot of the results with the write-up that explains
            it rather than up in the mortgage panel. -->
       <section class="card" id="cardSlope">
-        <header><h2>Slope adjustment</h2><span class="eyebrow">term premium</span></header>
+        <header><h2 data-i18n="slope.title">Slope adjustment</h2><span class="eyebrow" data-i18n="slope.eyebrow">term premium</span></header>
         <div class="body">
           <div class="adj-grid">
             <label class="field">
-              <span class="lab">Method</span>
+              <span class="lab" data-i18n="lab.adjMethod">Method</span>
               <select id="adjMethod">
-                <option value="slope" selected>Long-end slope of this curve</option>
-                <option value="fixed">Fixed premium per year</option>
-                <option value="shrink">Shrink the rise toward today</option>
-                <option value="none">None — raw forwards only</option>
+                <option value="slope" selected data-i18n="adj.slope">Long-end slope of this curve</option>
+                <option value="fixed" data-i18n="adj.fixed">Fixed premium per year</option>
+                <option value="shrink" data-i18n="adj.shrink">Shrink the rise toward today</option>
+                <option value="none" data-i18n="adj.none">None — raw forwards only</option>
               </select>
-              <span class="hint">Deducted from the raw forward to strip the part of the rise that is
+              <span class="hint" data-i18n="hint.adjMethod">Deducted from the raw forward to strip the part of the rise that is
                 term premium rather than expected rate changes. Never applied to today's row.</span>
             </label>
 
@@ -931,9 +990,9 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
       </section>
 
       <details class="card collapse" id="cardMethod">
-        <summary><h2>Method</h2><span class="eyebrow">how these numbers are produced</span></summary>
+        <summary><h2 data-i18n="method.title">Method</h2><span class="eyebrow" data-i18n="method.eyebrow">how these numbers are produced</span></summary>
         <div class="body prose">
-          <p>
+          <p data-i18n-html="method.p1">
             A zero-coupon curve <code class="k">z(t)</code> prices money out to every maturity today.
             Two points on it pin down the rate the market is implicitly quoting for a loan that
             <em>starts</em> at <code class="k">T</code> and runs for <code class="k">L</code> years —
@@ -946,14 +1005,14 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
               class="bot">(1 + <i>z</i>(<i>T</i>))<sup><i>T</i></sup></span></span></span><sup>1/<i
               >L</i></sup> &minus; 1</span>
           </div>
-          <p>
+          <p data-i18n-html="method.p2">
             For a variable track, the anchor at each reset is a government yield for a term equal to
             the reset interval. So the anchor expected <code class="k">N</code> months from now is
             <code class="k">f(N/12, L/12)</code> with <code class="k">L</code> the reset interval. At
             <code class="k">N = 0</code> this collapses to the spot rate <code class="k">z(L/12)</code>,
             which is why the table's first row is today.
           </p>
-          <p>
+          <p data-i18n-html="method.p3">
             <strong>Calibration.</strong> Your contract's stated anchor rarely equals
             <code class="k">z(L)</code> exactly — banks read the anchor off a trailing average of
             published yields over a defined lookback, so it lags the live curve, and the precise
@@ -964,7 +1023,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             moves the way the curve says it should. <em>Raw curve</em> drops the offset and shows the
             unadjusted forwards.
           </p>
-          <p>
+          <p data-i18n-html="method.p4">
             <strong>The slope adjustment.</strong> A forward rate is the expected future rate
             <em>plus a term premium</em>, and the premium grows with how far ahead you look. So an
             upward-sloping curve lifts every projected anchor even if the market expects no rate
@@ -973,7 +1032,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             estimate it, all zero at today's row, because today's anchor is observed rather than
             forecast:
           </p>
-          <ul>
+          <ul data-i18n-html="method.list">
             <li>
               <strong>Long-end slope</strong> (default) — deduct <code class="k">λ · T</code>, with
               <code class="k">λ</code> the annualised slope of the curve's far end. Past roughly ten
@@ -993,7 +1052,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
               a random walk is a stubbornly hard benchmark to beat.
             </li>
           </ul>
-          <p>
+          <p data-i18n-html="method.p5">
             These are transparent heuristics, not a term-structure model — a proper decomposition
             (Adrian-Crump-Moench, Kim-Wright) fits a factor model to the whole curve and yields a
             premium that varies by both horizon and maturity. Treat the raw and adjusted columns as
@@ -1003,7 +1062,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             than expectation.
           </p>
 
-          <p>
+          <p data-i18n-html="method.p6">
             <strong>Linked vs unlinked.</strong> CPI-linked tracks are read off the real (Galil)
             curve, so their anchors are <em>real</em> rates — principal and payment are indexed on top.
             The gap between the two curves at the same horizon is breakeven inflation — the market's
@@ -1011,17 +1070,17 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             Israel's 1–3% target band. The table shows it only once both legs are real data:
             computed against a placeholder curve it would be an artefact of an invented number.
           </p>
-          <p>
+          <p data-i18n-html="method.p7">
             <strong>Prime.</strong> The prime rate is the Bank of Israel rate plus 1.5pp by
             convention. Its forward path is taken from the short end — the 3-month forward
             <code class="k">f(N/12, 0.25)</code> — as a proxy for the expected policy rate, then
             1.5pp is added. Calibration is against the current prime you enter.
           </p>
-          <p><strong>Conventions.</strong> Zero rates are read as annual-effective. Monthly instalments
+          <p data-i18n-html="method.p8"><strong>Conventions.</strong> Zero rates are read as annual-effective. Monthly instalments
             use the Israeli quoting convention of a nominal annual rate divided by twelve. Outside the
             entered maturity range the curve is held flat rather than extrapolated.</p>
 
-          <p>
+          <p data-i18n-html="method.p9">
             <strong>The loaded curve.</strong> The unlinked curve splices two sources at one year. Out
             to 1y it is <strong>Makam</strong> — central bank bills, yields to maturity, read live
             from the Tel Aviv Stock Exchange listing, one point per bill on issue. From 2y to 15y it
@@ -1032,7 +1091,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             anchors are themselves read off averaged yields rather than a single day's fix. Each
             source's own date is listed against it in <em>Data sources</em> above.
           </p>
-          <p>
+          <p data-i18n-html="method.p10">
             Three things follow from that. The two sources carry <strong>different dates and
             averaging bases</strong>, so they do not agree exactly where they meet: the zero curve's
             1y point reads a few bp below the 1y bill. <strong>Makam governs the 0–1y span</strong> as
@@ -1049,7 +1108,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             is left in as published rather than quietly smoothed, but treat the very front of the
             curve with care.
           </p>
-          <p>
+          <p data-i18n-html="method.p11">
             <strong>The CPI-linked curve</strong> is the matching <em>Real rate of return derived
             from the zero coupon yield curve estimation</em>
             (<code class="k">Statistics/shcd07_e.xls</code>) — the Galil curve, same workbook family,
@@ -1060,7 +1119,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
             short rates to come down. Below 1y it is held flat, which matters for the breakeven
             column at short horizons, and beyond 20y the long fixed linked tracks flag it.
           </p>
-          <p>
+          <p data-i18n-html="method.p12">
             The two legs are <strong>observed on different dates</strong> — the nominal curve's short
             end is a daily Makam print, the real curve a mid-month average, typically a fortnight
             apart. Breakeven inflation is the difference between them, so it carries that timing
@@ -1069,7 +1128,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
           </p>
 
           <div class="notice" style="margin-top:16px">
-            <span>
+            <span data-i18n-html="method.notice">
               <b>A forward rate is a price, not a forecast.</b> It is where the market will let you
               lock a future rate today, and it embeds a term premium — so in an upward-sloping curve
               forwards systematically sit above the average outcome that actually materialises. Read
@@ -1080,7 +1139,7 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
         </div>
       </details>
 
-      <p class="foot">
+      <p class="foot" data-i18n="foot">
         Refresh the curve from the Bank of Israel's zero-coupon yield curve estimation (nominal for
         unlinked tracks, real for CPI-linked), published under Statistics → Bonds and MAKAM. Enter the
         maturities you have; the calculator interpolates between them and reports which points it used.
@@ -1233,6 +1292,586 @@ const state = {
 };
 
 const $ = id => document.getElementById(id);
+
+/* ============================================================
+   Language.
+
+   English and Hebrew, with Hebrew laid out right-to-left. The audience is
+   Israeli; the terminology on the page is the terminology their bank uses, so
+   the Hebrew is the banking vocabulary (עוגן, מרווח, מק"מ, לוח שפיצר) rather
+   than a literal translation of the English.
+
+   t() falls back to English for any key Hebrew does not define, so a missing
+   translation shows an English string rather than "undefined" or a bare key.
+   Numbers, percentages and dates stay LTR in both directions: a figure like
+   3.28% reads the same everywhere, and mirroring it would be wrong.
+   ============================================================ */
+const I18N = {
+  en: {
+    "unit.bp": "bp",
+    "unit.m": "m",
+    "unit.y": "y",
+    "pub.Calendar": "Calendar",
+    "pub.CPI-dated": "CPI-dated",
+    "tenor.reset": "{n}m reset",
+    "tenor.term": "{n}y term",
+    "tenor.policy": "policy proxy",
+    "lang.other": "עברית",
+    "lang.switchTo": "Switch to Hebrew",
+    "doc.title": "Forward Mortgage Anchor Calculator — Israel",
+
+    "mast.eyebrow": "Israel · government curve · forward rates",
+    "mast.h1": "Forward Mortgage Anchor Calculator",
+    "mast.lede": "What would the same mortgage track cost if you took it out later? This reads the market-implied answer straight off the Israeli government bond zero curve, using the forward-rate identity, and reports the projected <em>anchor</em> (עוגן) at each horizon.",
+    "mast.cap": "projected anchor",
+
+    "mortgage.title": "Mortgage",
+    "mortgage.eyebrow": "inputs",
+    "mortgage.note": "Three inputs are needed: the <b>track</b>, the <b>term</b> it prices off — reset interval for a variable track, mortgage term for a fixed one — and your <b>current anchor</b>. Everything marked <span class=\"opt\">optional</span> already has a sensible default.",
+    "opt": "optional",
+
+    "lab.track": "Track",
+    "track.var-unlinked": "Variable, unlinked (משתנה לא צמודה)",
+    "track.var-linked": "Variable, CPI-linked (משתנה צמודה)",
+    "track.fix-unlinked": "Fixed, unlinked (קבועה לא צמודה)",
+    "track.fix-linked": "Fixed, CPI-linked (קבועה צמודה)",
+    "track.prime": "Prime (פריים)",
+
+    "lab.reset": "Reset interval",
+    "reset.12": "Every 12 months",
+    "reset.18": "Every 18 months",
+    "reset.24": "Every 24 months",
+    "reset.30": "Every 30 months (2.5y)",
+    "reset.60": "Every 60 months (5y)",
+    "reset.120": "Every 120 months (10y)",
+    "hint.reset": "The anchor is re-read from the curve at each reset, for a term equal to this interval.",
+
+    "lab.anchor": "Anchor today (%)",
+    "lab.anchor.real": "Real anchor today (%)",
+    "lab.anchor.prime": "Prime today (%)",
+    "hint.anchor": "Your contract's current anchor, as quoted by the bank.",
+    "hint.anchor.prime": "Currently 5.00% — the Bank of Israel rate of 3.50% plus the 1.5pp convention.",
+
+    "lab.term": "Mortgage term (years)",
+    "hint.term.fixed": "The tenor the fixed rate is read from on the curve — this is what the projection prices.",
+    "hint.term.other": "Not used for this track's anchor; shown for context only.",
+
+    "lab.margin": "Bank margin (%)",
+    "lab.margin.prime": "Prime discount (%)",
+    "hint.margin": "Fixed spread over the anchor. Constant for the life of the loan; enter a negative number for a prime discount. Affects only the <em>incl. margin</em> and payment columns, never the anchor.",
+
+    "lab.calibration": "Calibration",
+    "btn.calOn": "Anchor to contract",
+    "btn.calOff": "Raw curve",
+    "aria.calibration": "Calibration mode",
+
+    "lab.horizons": "Horizons (months)",
+    "chip.h1": "monthly to 1y · quarterly to 3y",
+    "chip.h2": "6·12·18·24",
+    "chip.h3": "annual to 5y",
+
+    "sub.payment": "Payment estimate",
+    "lab.balance": "Balance (₪)",
+    "lab.payYears": "Years left",
+    "hint.payment": "Level-payment (שפיצר) monthly instalment at each projected rate, on this balance and remaining term. Leave the balance at zero to drop the payment column.",
+
+    "curve.title": "Zero curve",
+    "curve.eyebrow": "the data behind the forecast",
+    "curve.note": "The market data the whole projection is read off — <b>not</b> a result. Every anchor in the table above is a forward rate computed from these two curves, so this plot is here to show what went in, and to make it obvious when the wrong file has been loaded.",
+    "drop.text": "Drop a Bank of Israel workbook, a CSV, or a <code class=\"k\">curve.json</code> here — it is routed to whichever series it matches.",
+    "sub.sources": "Data sources",
+    "hint.sources": "Download the current tables from the Bank of Israel: <a href=\"https://www.boi.org.il/en/economic-roles/statistics/bonds-and-central-bank-bills-makam/bonds-and-central-bank-bills-makam-yields-to-maturity/#mainContent\" target=\"_blank\" rel=\"noopener noreferrer\">Bonds and MAKAM — yields to maturity</a>. <code class=\"k\">.xls</code>, <code class=\"k\">.xlsx</code> and CSV are all read here; the last row of each table is taken as the most recent, and every figure on the page is recomputed from it.",
+    "chip.reset": "reset to built-in",
+    "chip.paste": "edit / paste points",
+    "lab.paste": "Maturity / rate pairs",
+    "hint.paste": "Loaded with the curve selected below — edit it, or paste your own over it. One pair per line, any separator. <code class=\"k\">m</code> / <code class=\"k\">mo</code> is read as months, <code class=\"k\">y</code> as years, bare numbers as years.",
+    "leg.nominal.curve": "Unlinked curve",
+    "leg.real.curve": "CPI-linked curve",
+    "chip.applyPaste": "replace that curve",
+    "lab.interp": "Interpolation",
+    "interp.mono": "Monotone cubic on zero rates",
+    "interp.loglin": "Log-linear on discount factors",
+    "hint.interp": "Monotone cubic is smooth and shape-preserving. Log-linear gives piecewise-constant forwards — the market-standard convention.",
+
+    "path.title": "Anchor path",
+    "path.eyebrow": "forward-implied, every horizon",
+
+    "slope.title": "Slope adjustment",
+    "slope.eyebrow": "term premium",
+    "lab.adjMethod": "Method",
+    "adj.slope": "Long-end slope of this curve",
+    "adj.fixed": "Fixed premium per year",
+    "adj.shrink": "Shrink the rise toward today",
+    "adj.none": "None — raw forwards only",
+    "hint.adjMethod": "Deducted from the raw forward to strip the part of the rise that is term premium rather than expected rate changes. Never applied to today's row.",
+    "adjParam.fixed": "Premium (bp per year)",
+    "adjParam.shrink": "Shrink (% of the rise)",
+
+    "method.title": "Method",
+    "method.eyebrow": "how these numbers are produced",
+
+    "tile.anchorToday": "Anchor today",
+    "tile.in": "In {h}",
+    "tile.noHorizon": "No horizon set",
+    "tile.payment": "Monthly payment",
+    "tile.change": "Change",
+    "tile.vsToday": "vs {v} today",
+    "tile.adjRaw": "adjusted, raw {v}",
+    "pill.rising": "rising path",
+    "pill.falling": "falling path",
+    "pill.flat": "flat path",
+
+    "col.horizon": "Horizon",
+    "col.date": "Date",
+    "col.raw": "{anchor} (raw)",
+    "col.adjusted": "Adjusted",
+    "col.dRaw": "Δ raw",
+    "col.dAdj": "Δ adj.",
+    "col.margin": "Incl. margin",
+    "col.monthly": "Monthly",
+    "col.breakeven": "Breakeven infl.",
+    "word.anchor": "Anchor",
+    "word.anchorReal": "Real anchor",
+    "word.prime": "Prime",
+    "horizon.today": "Today",
+    "horizon.one": "1 month",
+    "horizon.many": "{n} months",
+    "proj.title": "Projected {anchor} · {n}",
+    "proj.horizons.one": "1 horizon",
+    "proj.horizons.many": "{n} horizons",
+    "proj.calibrated": "calibrated",
+    "proj.rawCurve": "raw curve",
+    "note.adjusted": "<b>Adjusted</b> strips an estimated term premium from the raw forward — {desc}. Grey figures in the margin and payment columns are the adjusted readings. Today's row is never adjusted: it is observed, not forecast.",
+    "note.breakeven": "<b>Breakeven inflation</b> is the gap between the unlinked and CPI-linked curves at the same horizon — the market's price for taking indexation risk.",
+    "months": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+
+    "adj.desc.slope": "here {bp} bp per year of horizon, read off the slope of this curve's far end",
+    "adj.desc.fixed": "here {bp} bp per year of horizon",
+    "adj.desc.shrink": "here the projected rise is shrunk {pct}% back toward today's level",
+    "adj.showingRaw": "Showing <b>raw forwards</b>, term premium included",
+    "adj.fromSegment": "↳ from the {from}→{to} segment of this curve",
+    "adj.deducted": "↳ {bp} bp deducted at the {m}-month horizon",
+
+    "cal.on": "Curve says {curve} today; your contract says {stated}. Carrying {off} across all horizons.",
+    "cal.wide": " <b style=\"color:var(--project)\">That gap is large — check the anchor above is the {kind} rate for this track, and that the curve is current.</b>",
+    "cal.kind.real": "real",
+    "cal.kind.nominal": "nominal",
+    "cal.off": "Showing unadjusted forwards. Your stated anchor is ignored.",
+
+    "warn.flatAbove": "flat beyond {t}",
+    "warn.flatBelow": "flat below {t}",
+    "warn.stale.one": "<b>The Bank of Israel has published newer figures than the curve loaded here.</b> ",
+    "warn.stale.many": "<b>The Bank of Israel has published newer figures than the curves loaded here.</b> ",
+    "warn.stale.item": "{name} is dated {date}; {n} {rel} gone out since, most recently {latest} ({type} average)",
+    "warn.stale.relOne": "release has",
+    "warn.stale.relMany": "releases have",
+    "warn.stale.tail": ". Download the current table and load it in the <em>Zero curve</em> panel — every figure here is read off these files.",
+    "warn.shortGap": "<b>This curve starts at {t}, so it can't price a 3-month rate.</b> The prime path below is extrapolated flat from the {t} point and is not meaningful. Load a short-end curve (Makam covers 1–12 months), or read the prime path from the Bank of Israel rate directly.",
+    "warn.placeholderReal": "<b>The CPI-linked curve is a placeholder</b>, so this track's real anchors are an estimate rather than market data. Load the Galil zero curve to make them real.",
+    "notice.placeholder": "<b>The {names} curve is an illustrative placeholder</b>, not market data — the loaded Bank of Israel files carry nominal yields only. CPI-linked tracks read off it are estimates, and the breakeven inflation column is withheld until then. Load a Galil zero curve and both become real.",
+    "notice.name.real": "CPI-linked",
+    "notice.name.nominal": "unlinked",
+    "notice.and": " and ",
+
+    "chart.now": "now",
+    "chart.forwardWindow": "forward window",
+    "legend.raw": "Raw forward {anchor}",
+    "legend.raw.calibrated": "(calibrated)",
+    "legend.raw.uncalibrated": "(uncalibrated)",
+    "legend.anchor": "anchor",
+    "legend.anchorReal": "real anchor",
+    "legend.adjusted": "Adjusted — term premium removed",
+    "legend.levelToday": "Level today · {v}",
+    "legend.dots": "dots are entered maturities · x-axis is √t",
+    "legend.splice": " · grey = interpolated across the splice",
+    "legend.extrap": " · dashed = held flat, not data",
+    "legend.points": "{n} points",
+
+    "tip.raw": "Raw",
+    "tip.adjusted": "Adjusted",
+    "tip.premiumOut": "Premium out",
+    "tip.vsToday": "vs today",
+    "tip.margin": "Incl. margin",
+    "tip.monthly": "Monthly",
+    "tip.maturity": "{t} maturity",
+    "tip.heldFlat": " · held flat",
+    "tip.interpolated": " · interpolated",
+    "tip.between": " · between sources",
+    "series.nominal": "Unlinked (nominal)",
+    "series.real": "CPI-linked (real)",
+    "series.makam": "Makam (T-bill) yields",
+    "series.shcd08": "Government bond yields · nominal zero-coupon curve",
+    "series.shcd07": "Government bond yields · CPI-linked (real) zero-coupon curve",
+    "series.short.makam": "Makam",
+    "series.short.zero": "zero-coupon curve",
+    "series.unknown": "{leg} zero curve · {file}",
+
+    "src.makam.button": "MAKAM yields",
+    "src.makam.hint": "Unlinked short end, 1–12m · daily",
+    "src.shcd08.button": "BOI zero-coupon curve",
+    "src.shcd08.hint": "Unlinked, 1–15y · monthly averages · shcd08",
+    "src.shcd07.button": "BOI real (Galil) curve",
+    "src.shcd07.hint": "CPI-linked, 1–20y · monthly averages · shcd07",
+    "src.notLoaded": "not loaded",
+    "src.builtIn": "built in",
+    "src.noDate": "no date",
+    "src.newer": "newer figures published {date} ({type})",
+    "src.behind": " · {n} releases behind",
+    "src.next": "next release {date} ({type})",
+    "src.cantRead": "could not read: {msg}",
+
+    "prov.pts": "{n} pts",
+    "leg.nominal": "Unlinked",
+    "leg.real": "CPI-linked",
+    "prov.est": " (estimate)",
+    "prov.typed": "entered by hand",
+    "prov.carried": "carried from {file}",
+    "prov.passthrough": "curve.json passthrough",
+
+    "err.badJson": "That file isn't valid JSON.",
+    "err.noPairs": "No maturity/rate pairs in that JSON.",
+    "err.noPoints": "curve.json has no usable points.",
+    "err.badShape": "Unrecognised JSON shape — expected {nominal, real} or a list of pairs.",
+    "err.noColumns": "Couldn't find a maturity column and a rate column in that file.",
+    "err.nothing": "Nothing to load from that file.",
+    "err.noTable": "No maturity/rate table in that file.",
+    "err.noTableWb": "no maturity/rate table found in that workbook",
+    "err.noPairsFound": "no maturity/rate pairs found",
+    "err.noMerge": "nothing to merge",
+    "err.cantRead": "Couldn't read that file.",
+    "ok.loadedAs": "Loaded as {name}.",
+
+    "method.p1": "A zero-coupon curve <code class=\"k\">z(t)</code> prices money out to every maturity today.\n            Two points on it pin down the rate the market is implicitly quoting for a loan that\n            <em>starts</em> at <code class=\"k\">T</code> and runs for <code class=\"k\">L</code> years —\n            the forward rate. No-arbitrage forces it:",
+    "method.p2": "For a variable track, the anchor at each reset is a government yield for a term equal to\n            the reset interval. So the anchor expected <code class=\"k\">N</code> months from now is\n            <code class=\"k\">f(N/12, L/12)</code> with <code class=\"k\">L</code> the reset interval. At\n            <code class=\"k\">N = 0</code> this collapses to the spot rate <code class=\"k\">z(L/12)</code>,\n            which is why the table's first row is today.",
+    "method.p3": "<strong>Calibration.</strong> Your contract's stated anchor rarely equals\n            <code class=\"k\">z(L)</code> exactly — banks read the anchor off a trailing average of\n            published yields over a defined lookback, so it lags the live curve, and the precise\n            definition varies by lender under Proper Conduct of Banking Business Directive 451. With\n            <em>Anchor to contract</em> on, the calculator computes\n            <code class=\"k\">offset = your anchor − z(L)</code> and carries that constant offset across\n            every horizon. You get a path that starts exactly where your contract actually is, and\n            moves the way the curve says it should. <em>Raw curve</em> drops the offset and shows the\n            unadjusted forwards.",
+    "method.p4": "<strong>The slope adjustment.</strong> A forward rate is the expected future rate\n            <em>plus a term premium</em>, and the premium grows with how far ahead you look. So an\n            upward-sloping curve lifts every projected anchor even if the market expects no rate\n            change at all — the raw path inherits the curve's shape, not just its expectations. The\n            <em>Adjusted</em> column subtracts an estimate of that mechanical component. Three ways to\n            estimate it, all zero at today's row, because today's anchor is observed rather than\n            forecast:",
+    "method.list": "<li>\n              <strong>Long-end slope</strong> (default) — deduct <code class=\"k\">λ · T</code>, with\n              <code class=\"k\">λ</code> the annualised slope of the curve's far end. Past roughly ten\n              years, expected policy changes are small, so residual slope out there is mostly premium\n              accrual. On the loaded curve that is about 5&nbsp;bp per year, taken from the 10y→15y\n              segment. Its virtue is that nothing is hand-tuned: the number comes from your own curve.\n            </li>\n            <li>\n              <strong>Fixed premium</strong> — deduct a flat <code class=\"k\">bp · T</code> you supply,\n              when you have your own view or a published term-premium estimate.\n            </li>\n            <li>\n              <strong>Shrink toward today</strong> — keep a fraction of the projected rise:\n              <code class=\"k\">adjusted = raw − θ · (raw − today)</code>. At θ&nbsp;=&nbsp;1 the path is\n              flat at today's anchor, which is the random-walk forecast. This is the bluntest method\n              and the best supported empirically: forwards are biased predictors of future rates, and\n              a random walk is a stubbornly hard benchmark to beat.\n            </li>",
+    "method.p5": "These are transparent heuristics, not a term-structure model — a proper decomposition\n            (Adrian-Crump-Moench, Kim-Wright) fits a factor model to the whole curve and yields a\n            premium that varies by both horizon and maturity. Treat the raw and adjusted columns as\n            bracketing the answer: raw is the rate you could lock in today, adjusted is closer to\n            what a rate-setter's path implies. The truth usually sits between them, and the gap\n            between the two is the honest measure of how much of the projection is premium rather\n            than expectation.",
+    "method.p6": "<strong>Linked vs unlinked.</strong> CPI-linked tracks are read off the real (Galil)\n            curve, so their anchors are <em>real</em> rates — principal and payment are indexed on top.\n            The gap between the two curves at the same horizon is breakeven inflation — the market's\n            price for taking indexation risk — here it runs around 1.6% to 1.8%, inside the Bank of\n            Israel's 1–3% target band. The table shows it only once both legs are real data:\n            computed against a placeholder curve it would be an artefact of an invented number.",
+    "method.p7": "<strong>Prime.</strong> The prime rate is the Bank of Israel rate plus 1.5pp by\n            convention. Its forward path is taken from the short end — the 3-month forward\n            <code class=\"k\">f(N/12, 0.25)</code> — as a proxy for the expected policy rate, then\n            1.5pp is added. Calibration is against the current prime you enter.",
+    "method.p8": "<strong>Conventions.</strong> Zero rates are read as annual-effective. Monthly instalments\n            use the Israeli quoting convention of a nominal annual rate divided by twelve. Outside the\n            entered maturity range the curve is held flat rather than extrapolated.",
+    "method.p9": "<strong>The loaded curve.</strong> The unlinked curve splices two sources at one year. Out\n            to 1y it is <strong>Makam</strong> — central bank bills, yields to maturity, read live\n            from the Tel Aviv Stock Exchange listing, one point per bill on issue. From 2y to 15y it\n            is the Bank of Israel's <em>Nominal rate of return derived from the zero coupon yield\n            curve estimation</em> (<code class=\"k\">Statistics/shcd08_e.xls</code>), which publishes\n            <strong>monthly averages</strong> as alternating month-end (<em>Calendar</em>) and\n            mid-month (<em>CPI-dated</em>) rows. Averaged data suits anchor work, since contractual\n            anchors are themselves read off averaged yields rather than a single day's fix. Each\n            source's own date is listed against it in <em>Data sources</em> above.",
+    "method.p10": "Three things follow from that. The two sources carry <strong>different dates and\n            averaging bases</strong>, so they do not agree exactly where they meet: the zero curve's\n            1y point reads a few bp below the 1y bill. <strong>Makam governs the 0–1y span</strong> as\n            the short-term instrument and the fresher observation — and it governs the whole span, not\n            just the maturities it happens to quote. Bills mature on real dates, so the longest one\n            usually stops short of a round year; where it does, the 1y point is interpolated from that\n            bill to the 2y point rather than taking the older average's level. That matters more than\n            it sounds: mixing the two at adjacent maturities puts a small dip in the curve, and a\n            forward rate has to make that dip up, which turns a few bp of level difference into\n            something that reads like a market view at the 12-month horizon. Anything past\n            <strong>15y</strong> is held flat, which the fixed long-term tracks flag. And the\n            <strong>shortest bill sits well above its neighbours</strong> — days from redemption, the\n            annualisation multiplier is enormous, so a rounding in its price is worth tens of bp. It\n            is left in as published rather than quietly smoothed, but treat the very front of the\n            curve with care.",
+    "method.p11": "<strong>The CPI-linked curve</strong> is the matching <em>Real rate of return derived\n            from the zero coupon yield curve estimation</em>\n            (<code class=\"k\">Statistics/shcd07_e.xls</code>) — the Galil curve, same workbook family,\n            same monthly-average basis, 1y to 20y, latest row 2026-07-15. It is\n            <strong>humped at the front</strong>: 1.70% at 1y, falling to 1.61% at 3y before rising\n            again. So a CPI-linked variable track projects a <em>falling</em> real anchor over the\n            next couple of years, the opposite shape to the unlinked one — the market expects real\n            short rates to come down. Below 1y it is held flat, which matters for the breakeven\n            column at short horizons, and beyond 20y the long fixed linked tracks flag it.",
+    "method.p12": "The two legs are <strong>observed on different dates</strong> — the nominal curve's short\n            end is a daily Makam print, the real curve a mid-month average, typically a fortnight\n            apart. Breakeven inflation is the difference between them, so it carries that timing\n            mismatch. Each leg's own date is shown against it rather than a single date for the page,\n            because one number there would misstate the older leg.",
+    "method.notice": "<b>A forward rate is a price, not a forecast.</b> It is where the market will let you\n              lock a future rate today, and it embeds a term premium — so in an upward-sloping curve\n              forwards systematically sit above the average outcome that actually materialises. Read\n              these as the market-implied path, not as a prediction of Bank of Israel policy. Nothing\n              here is financial advice.",
+    "foot": "Refresh the curve from the Bank of Israel's zero-coupon yield curve estimation (nominal for unlinked tracks, real for CPI-linked), published under Statistics → Bonds and MAKAM. Enter the maturities you have; the calculator interpolates between them and reports which points it used."
+  },
+
+  he: {
+    "unit.bp": "נ\"ב",
+    "unit.m": "ח׳",
+    "unit.y": "ש׳",
+    "pub.Calendar": "קלנדרי",
+    "pub.CPI-dated": "מדדי",
+    "tenor.reset": "עדכון כל {n} חודשים",
+    "tenor.term": "תקופה {n} שנים",
+    "tenor.policy": "קירוב לריבית בנק ישראל",
+    "lang.other": "English",
+    "lang.switchTo": "החלף לאנגלית",
+    "doc.title": "מחשבון עוגן משכנתא עתידי — ישראל",
+
+    "mast.eyebrow": "ישראל · עקום ממשלתי · ריביות פורוורד",
+    "mast.h1": "מחשבון עוגן משכנתא עתידי",
+    "mast.lede": "כמה יעלה אותו מסלול משכנתא אם תיקחו אותו במועד מאוחר יותר? הדף קורא את התשובה שהשוק מגלם ישירות מעקום האפס של אגרות החוב הממשלתיות בישראל, לפי זהות ריבית הפורוורד, ומציג את ה<em>עוגן</em> החזוי בכל אופק.",
+    "mast.cap": "עוגן חזוי",
+
+    "mortgage.title": "משכנתא",
+    "mortgage.eyebrow": "נתונים",
+    "mortgage.note": "שלושה נתונים נדרשים: <b>המסלול</b>, <b>התקופה</b> שהוא מתומחר לפיה — תקופת עדכון במסלול משתנה, תקופת המשכנתא במסלול קבוע — ו<b>העוגן הנוכחי</b> שלכם. לכל שדה המסומן <span class=\"opt\">אופציונלי</span> יש ברירת מחדל סבירה.",
+    "opt": "אופציונלי",
+
+    "lab.track": "מסלול",
+    "track.var-unlinked": "משתנה לא צמודה",
+    "track.var-linked": "משתנה צמודה למדד",
+    "track.fix-unlinked": "קבועה לא צמודה",
+    "track.fix-linked": "קבועה צמודה למדד",
+    "track.prime": "פריים",
+
+    "lab.reset": "תקופת עדכון",
+    "reset.12": "כל 12 חודשים",
+    "reset.18": "כל 18 חודשים",
+    "reset.24": "כל 24 חודשים",
+    "reset.30": "כל 30 חודשים (2.5 שנים)",
+    "reset.60": "כל 60 חודשים (5 שנים)",
+    "reset.120": "כל 120 חודשים (10 שנים)",
+    "hint.reset": "העוגן נקרא מחדש מן העקום בכל מועד עדכון, לתקופה השווה למרווח הזה.",
+
+    "lab.anchor": "עוגן היום (%)",
+    "lab.anchor.real": "עוגן ריאלי היום (%)",
+    "lab.anchor.prime": "פריים היום (%)",
+    "hint.anchor": "העוגן הנוכחי בחוזה שלכם, כפי שהבנק מצטט אותו.",
+    "hint.anchor.prime": "כיום 5.00% — ריבית בנק ישראל של 3.50% בתוספת 1.5 נקודות האחוז המקובלות.",
+
+    "lab.term": "תקופת המשכנתא (שנים)",
+    "hint.term.fixed": "התקופה שממנה נקראת הריבית הקבועה על העקום — זה מה שהתחזית מתמחרת.",
+    "hint.term.other": "לא בשימוש עבור העוגן במסלול הזה; מוצג להקשר בלבד.",
+
+    "lab.margin": "מרווח הבנק (%)",
+    "lab.margin.prime": "הנחת פריים (%)",
+    "hint.margin": "מרווח קבוע מעל העוגן. קבוע לכל חיי ההלוואה; הזינו מספר שלילי עבור הנחה בפריים. משפיע רק על העמודות <em>כולל מרווח</em> וההחזר, ולעולם לא על העוגן.",
+
+    "lab.calibration": "כיול",
+    "btn.calOn": "כיול לחוזה",
+    "btn.calOff": "עקום גולמי",
+    "aria.calibration": "מצב כיול",
+
+    "lab.horizons": "אופקים (חודשים)",
+    "chip.h1": "חודשי עד שנה · רבעוני עד 3 שנים",
+    "chip.h2": "6·12·18·24",
+    "chip.h3": "שנתי עד 5 שנים",
+
+    "sub.payment": "אומדן החזר חודשי",
+    "lab.balance": "יתרה (₪)",
+    "lab.payYears": "שנים שנותרו",
+    "hint.payment": "החזר חודשי בלוח שפיצר לפי כל ריבית חזויה, על היתרה והתקופה שנותרה. השאירו את היתרה על אפס כדי להסתיר את עמודת ההחזר.",
+
+    "curve.title": "עקום האפס",
+    "curve.eyebrow": "הנתונים שמאחורי התחזית",
+    "curve.note": "נתוני השוק שכל התחזית נקראת מהם — <b>לא</b> תוצאה. כל עוגן בטבלה שלמעלה הוא ריבית פורוורד המחושבת משני העקומים האלה, כך שהתרשים כאן כדי להראות מה נכנס, וכדי שיהיה ברור מיד אם נטען הקובץ הלא נכון.",
+    "drop.text": "גררו לכאן חוברת עבודה של בנק ישראל, קובץ CSV או <code class=\"k\">curve.json</code> — הקובץ ינותב לסדרה שהוא מתאים לה.",
+    "sub.sources": "מקורות הנתונים",
+    "hint.sources": "הורידו את הטבלאות העדכניות מאתר בנק ישראל: <a href=\"https://www.boi.org.il/he/economic-roles/statistics/bonds-and-central-bank-bills-makam/bonds-and-central-bank-bills-makam-yields-to-maturity/#mainContent\" target=\"_blank\" rel=\"noopener noreferrer\">אגרות חוב ומק\"מ — תשואות לפדיון</a>. הדף קורא <code class=\"k\">.xls</code>, <code class=\"k\">.xlsx</code> ו‑CSV; השורה האחרונה בכל טבלה נלקחת כעדכנית ביותר, וכל מספר בדף מחושב מחדש ממנה.",
+    "chip.reset": "חזרה לעקום המוטמע",
+    "chip.paste": "עריכה / הדבקת נקודות",
+    "lab.paste": "זוגות תקופה / ריבית",
+    "hint.paste": "נטען עם העקום הנבחר למטה — ערכו אותו, או הדביקו עליו עקום משלכם. זוג בכל שורה, כל מפריד. <code class=\"k\">m</code> / <code class=\"k\">mo</code> נקרא כחודשים, <code class=\"k\">y</code> כשנים, ומספר ללא סימון כשנים.",
+    "leg.nominal.curve": "עקום לא צמוד",
+    "leg.real.curve": "עקום צמוד מדד",
+    "chip.applyPaste": "החלף את העקום",
+    "lab.interp": "אינטרפולציה",
+    "interp.mono": "קובית מונוטונית על ריביות האפס",
+    "interp.loglin": "לוג‑לינארית על מקדמי היוון",
+    "hint.interp": "הקובית המונוטונית חלקה ושומרת על צורת העקום. הלוג‑לינארית נותנת פורוורדים קבועים למקטעים — המקובל בשוק.",
+
+    "path.title": "מסלול העוגן",
+    "path.eyebrow": "נגזר מפורוורד, בכל אופק",
+
+    "slope.title": "התאמת שיפוע",
+    "slope.eyebrow": "פרמיית זמן",
+    "lab.adjMethod": "שיטה",
+    "adj.slope": "שיפוע הקצה הארוך של העקום הזה",
+    "adj.fixed": "פרמיה קבועה לשנה",
+    "adj.shrink": "כיווץ העלייה לכיוון היום",
+    "adj.none": "ללא — פורוורדים גולמיים בלבד",
+    "hint.adjMethod": "מנוכה מהפורוורד הגולמי כדי לנקות את חלק העלייה שהוא פרמיית זמן ולא ציפייה לשינוי ריבית. לעולם לא מוחל על שורת היום.",
+    "adjParam.fixed": "פרמיה (נ\"ב לשנה)",
+    "adjParam.shrink": "כיווץ (% מהעלייה)",
+
+    "method.title": "המתודולוגיה",
+    "method.eyebrow": "איך המספרים האלה מחושבים",
+
+    "tile.anchorToday": "עוגן היום",
+    "tile.in": "בעוד {h}",
+    "tile.noHorizon": "לא נבחר אופק",
+    "tile.payment": "החזר חודשי",
+    "tile.change": "שינוי",
+    "tile.vsToday": "מול {v} היום",
+    "tile.adjRaw": "מותאם, גולמי {v}",
+    "pill.rising": "מסלול עולה",
+    "pill.falling": "מסלול יורד",
+    "pill.flat": "מסלול שטוח",
+
+    "col.horizon": "אופק",
+    "col.date": "תאריך",
+    "col.raw": "{anchor} (גולמי)",
+    "col.adjusted": "מותאם",
+    "col.dRaw": "Δ גולמי",
+    "col.dAdj": "Δ מותאם",
+    "col.margin": "כולל מרווח",
+    "col.monthly": "החזר חודשי",
+    "col.breakeven": "אינפלציה נגזרת",
+    "word.anchor": "עוגן",
+    "word.anchorReal": "עוגן ריאלי",
+    "word.prime": "פריים",
+    "horizon.today": "היום",
+    "horizon.one": "חודש",
+    "horizon.many": "{n} חודשים",
+    "proj.title": "{anchor} חזוי · {n}",
+    "proj.horizons.one": "אופק אחד",
+    "proj.horizons.many": "{n} אופקים",
+    "proj.calibrated": "מכויל",
+    "proj.rawCurve": "עקום גולמי",
+    "note.adjusted": "<b>מותאם</b> מנקה אומדן של פרמיית זמן מן הפורוורד הגולמי — {desc}. המספרים האפורים בעמודות המרווח וההחזר הם הקריאות המותאמות. שורת היום לעולם אינה מותאמת: היא נמדדת, לא נחזית.",
+    "note.breakeven": "<b>אינפלציה נגזרת</b> היא הפער בין העקום הלא צמוד לצמוד המדד באותו אופק — המחיר שהשוק גובה על נטילת סיכון ההצמדה.",
+    "months": "ינו,פבר,מרץ,אפר,מאי,יונ,יול,אוג,ספט,אוק,נוב,דצמ",
+
+    "adj.desc.slope": "כאן {bp} נ\"ב לכל שנת אופק, לפי שיפוע הקצה הרחוק של העקום הזה",
+    "adj.desc.fixed": "כאן {bp} נ\"ב לכל שנת אופק",
+    "adj.desc.shrink": "כאן העלייה החזויה מכווצת ב‑{pct}% חזרה לרמת היום",
+    "adj.showingRaw": "מוצגים <b>פורוורדים גולמיים</b>, כולל פרמיית זמן",
+    "adj.fromSegment": "↳ מהמקטע {from}→{to} של העקום הזה",
+    "adj.deducted": "↳ {bp} נ\"ב מנוכות באופק של {m} חודשים",
+
+    "cal.on": "העקום אומר {curve} היום; החוזה שלכם אומר {stated}. מועברות {off} לכל האופקים.",
+    "cal.wide": " <b style=\"color:var(--project)\">הפער הזה גדול — בדקו שהעוגן שלמעלה הוא הריבית ה{kind} עבור המסלול הזה, ושהעקום עדכני.</b>",
+    "cal.kind.real": "ריאלית",
+    "cal.kind.nominal": "נומינלית",
+    "cal.off": "מוצגים פורוורדים לא מותאמים. העוגן שהזנתם אינו בשימוש.",
+
+    "warn.flatAbove": "שטוח מעל {t}",
+    "warn.flatBelow": "שטוח מתחת ל‑{t}",
+    "warn.stale.one": "<b>בנק ישראל פרסם נתונים חדשים מהעקום שנטען כאן.</b> ",
+    "warn.stale.many": "<b>בנק ישראל פרסם נתונים חדשים מהעקומים שנטענו כאן.</b> ",
+    "warn.stale.item": "{name} מתוארך ל‑{date}; {n} {rel} מאז, האחרון ב‑{latest} (ממוצע {type})",
+    "warn.stale.relOne": "פרסום יצא",
+    "warn.stale.relMany": "פרסומים יצאו",
+    "warn.stale.tail": ". הורידו את הטבלה העדכנית וטענו אותה בלוח <em>עקום האפס</em> — כל מספר כאן נקרא מהקבצים האלה.",
+    "warn.shortGap": "<b>העקום הזה מתחיל ב‑{t}, ולכן אינו יכול לתמחר ריבית ל‑3 חודשים.</b> מסלול הפריים למטה מוחזק שטוח מנקודת ה‑{t} ואינו בעל משמעות. טענו עקום לקצה הקצר (מק\"מ מכסה 1–12 חודשים), או קראו את מסלול הפריים ישירות מריבית בנק ישראל.",
+    "warn.placeholderReal": "<b>העקום צמוד המדד הוא עקום מקורב</b>, ולכן העוגנים הריאליים במסלול הזה הם אומדן ולא נתוני שוק. טענו את עקום הגליל כדי שיהיו אמיתיים.",
+    "notice.placeholder": "<b>העקום ה{names} הוא עקום להמחשה</b>, לא נתוני שוק — קבצי בנק ישראל שנטענו מכילים תשואות נומינליות בלבד. מסלולים צמודי מדד הנקראים ממנו הם אומדן, ועמודת האינפלציה הנגזרת מוסתרת עד אז. טענו עקום גליל ושניהם יהפכו לאמיתיים.",
+    "notice.name.real": "צמוד המדד",
+    "notice.name.nominal": "הלא צמוד",
+    "notice.and": " ו",
+
+    "chart.now": "היום",
+    "chart.forwardWindow": "חלון הפורוורד",
+    "legend.raw": "פורוורד גולמי · {anchor}",
+    "legend.raw.calibrated": "(מכויל)",
+    "legend.raw.uncalibrated": "(לא מכויל)",
+    "legend.anchor": "עוגן",
+    "legend.anchorReal": "עוגן ריאלי",
+    "legend.adjusted": "מותאם — פרמיית הזמן הוסרה",
+    "legend.levelToday": "הרמה היום · {v}",
+    "legend.dots": "הנקודות הן תקופות שהוזנו · ציר ה‑x הוא √t",
+    "legend.splice": " · אפור = אינטרפולציה על התפר",
+    "legend.extrap": " · מקווקו = מוחזק שטוח, לא נתונים",
+    "legend.points": "{n} נקודות",
+
+    "tip.raw": "גולמי",
+    "tip.adjusted": "מותאם",
+    "tip.premiumOut": "פרמיה שהוסרה",
+    "tip.vsToday": "מול היום",
+    "tip.margin": "כולל מרווח",
+    "tip.monthly": "החזר חודשי",
+    "tip.maturity": "תקופה לפדיון {t}",
+    "tip.heldFlat": " · מוחזק שטוח",
+    "tip.interpolated": " · אינטרפולציה",
+    "tip.between": " · בין מקורות",
+    "series.nominal": "לא צמוד (נומינלי)",
+    "series.real": "צמוד מדד (ריאלי)",
+    "series.makam": "תשואות מק\"מ",
+    "series.shcd08": "תשואות אג\"ח ממשלתי · עקום אפס נומינלי",
+    "series.shcd07": "תשואות אג\"ח ממשלתי · עקום אפס צמוד מדד (ריאלי)",
+    "series.short.makam": "מק\"מ",
+    "series.short.zero": "עקום אפס",
+    "series.unknown": "עקום אפס {leg} · {file}",
+
+    "src.makam.button": "תשואות מק\"מ",
+    "src.makam.hint": "קצה קצר לא צמוד, 1–12 חודשים · יומי",
+    "src.shcd08.button": "עקום האפס של בנק ישראל",
+    "src.shcd08.hint": "לא צמוד, 1–15 שנים · ממוצעים חודשיים · shcd08",
+    "src.shcd07.button": "עקום הגליל הריאלי של בנק ישראל",
+    "src.shcd07.hint": "צמוד מדד, 1–20 שנים · ממוצעים חודשיים · shcd07",
+    "src.notLoaded": "לא נטען",
+    "src.builtIn": "מוטמע",
+    "src.noDate": "ללא תאריך",
+    "src.newer": "פורסמו נתונים חדשים ב‑{date} ({type})",
+    "src.behind": " · {n} פרסומים מאחור",
+    "src.next": "הפרסום הבא {date} ({type})",
+    "src.cantRead": "לא ניתן לקרוא: {msg}",
+
+    "prov.pts": "{n} נקודות",
+    "leg.nominal": "לא צמוד",
+    "leg.real": "צמוד מדד",
+    "prov.est": " (אומדן)",
+    "prov.typed": "הוזן ידנית",
+    "prov.carried": "נשאב מ‑{file}",
+    "prov.passthrough": "העברה מ‑curve.json",
+
+    "err.badJson": "הקובץ הזה אינו JSON תקין.",
+    "err.noPairs": "לא נמצאו זוגות תקופה/ריבית ב‑JSON הזה.",
+    "err.noPoints": "ל‑curve.json אין נקודות שמישות.",
+    "err.badShape": "מבנה JSON לא מזוהה — צפוי {nominal, real} או רשימת זוגות.",
+    "err.noColumns": "לא נמצאו עמודת תקופה ועמודת ריבית בקובץ הזה.",
+    "err.nothing": "אין מה לטעון מהקובץ הזה.",
+    "err.noTable": "אין טבלת תקופה/ריבית בקובץ הזה.",
+    "err.noTableWb": "לא נמצאה טבלת תקופה/ריבית בחוברת העבודה",
+    "err.noPairsFound": "לא נמצאו זוגות תקופה/ריבית",
+    "err.noMerge": "אין מה למזג",
+    "err.cantRead": "לא ניתן לקרוא את הקובץ.",
+    "ok.loadedAs": "נטען בתור {name}.",
+
+    "method.p1": "עקום אפס <code class=\"k\">z(t)</code> מתמחר כסף לכל תקופה עד לפדיון, נכון להיום. שתי נקודות עליו קובעות את הריבית שהשוק מגלם עבור הלוואה ש<em>מתחילה</em> בעוד <code class=\"k\">T</code> שנים ונמשכת <code class=\"k\">L</code> שנים — ריבית הפורוורד. היעדר ארביטראז' מכתיב אותה:",
+    "method.p2": "במסלול משתנה, העוגן בכל מועד עדכון הוא תשואה ממשלתית לתקופה השווה לתקופת העדכון. לכן העוגן הצפוי בעוד <code class=\"k\">N</code> חודשים הוא <code class=\"k\">f(N/12, L/12)</code> כאשר <code class=\"k\">L</code> היא תקופת העדכון. ב־<code class=\"k\">N = 0</code> הביטוי מתכנס לריבית הספוט <code class=\"k\">z(L/12)</code>, ולכן השורה הראשונה בטבלה היא היום.",
+    "method.p3": "<strong>כיול.</strong> העוגן הרשום בחוזה שלכם רק לעתים רחוקות שווה בדיוק ל־<code class=\"k\">z(L)</code> — הבנקים קוראים את העוגן מממוצע נע של תשואות שפורסמו על פני תקופת התבוננות מוגדרת, ולכן הוא מפגר אחרי העקום החי, וההגדרה המדויקת משתנה בין המלווים לפי הוראת ניהול בנקאי תקין 451. כאשר <em>כיול לחוזה</em> פעיל, המחשבון מחשב <code class=\"k\">היסט = העוגן שלכם − z(L)</code> ומעביר את ההיסט הקבוע הזה לכל האופקים. מתקבל מסלול שמתחיל בדיוק במקום שבו החוזה שלכם נמצא, ונע כפי שהעקום אומר שהוא צריך לנוע. <em>עקום גולמי</em> מוותר על ההיסט ומציג את הפורוורדים הלא מותאמים.",
+    "method.p4": "<strong>התאמת השיפוע.</strong> ריבית פורוורד היא הריבית העתידית הצפויה <em>בתוספת פרמיית זמן</em>, והפרמיה גדלה עם המרחק שאליו מסתכלים. לכן עקום בעל שיפוע חיובי מרים כל עוגן חזוי גם אם השוק אינו מצפה לשום שינוי בריבית — המסלול הגולמי יורש את צורת העקום, לא רק את הציפיות שבו. העמודה <em>מותאם</em> מחסירה אומדן של המרכיב המכני הזה. שלוש דרכים לאמוד אותו, כולן אפס בשורת היום, כי העוגן של היום נמדד ולא נחזה:",
+    "method.list": "<li>\n              <strong>שיפוע הקצה הארוך</strong> (ברירת המחדל) — מחסירים <code class=\"k\">λ · T</code>, כאשר <code class=\"k\">λ</code> הוא השיפוע השנתי של הקצה הרחוק של העקום. מעבר לעשר שנים בקירוב, שינויי מדיניות צפויים הם קטנים, ולכן שיפוע שנותר שם הוא בעיקר צבירת פרמיה. בעקום שנטען זה כ‑5 נ\"ב לשנה, לפי המקטע 10→15 שנים. היתרון הוא שדבר אינו מכויל ביד: המספר בא מהעקום שלכם.\n            </li>\n            <li>\n              <strong>פרמיה קבועה</strong> — מחסירים <code class=\"k\">נ\"ב · T</code> שאתם מספקים, כשיש לכם דעה משלכם או אומדן פרמיית זמן מפורסם.\n            </li>\n            <li>\n              <strong>כיווץ לכיוון היום</strong> — שומרים חלק מהעלייה החזויה:\n              <code class=\"k\">מותאם = גולמי − θ · (גולמי − היום)</code>. ב‑θ&nbsp;=&nbsp;1 המסלול שטוח ברמת העוגן של היום, שהיא תחזית ההילוך המקרי. זו השיטה הגסה ביותר והמבוססת ביותר אמפירית: פורוורדים הם חזאים מוטים של ריביות עתידיות, ומודל הילוך מקרי הוא רף שקשה מאוד לנצח.\n            </li>",
+    "method.p5": "אלה היוריסטיקות שקופות, לא מודל של מבנה עתי — פירוק ראוי (Adrian‑Crump‑Moench, Kim‑Wright) מתאים מודל גורמים לכל העקום ומפיק פרמיה שמשתנה גם לפי אופק וגם לפי תקופה לפדיון. התייחסו לעמודות הגולמי והמותאם כתוחמות את התשובה: הגולמי הוא הריבית שאפשר לקבע היום, המותאם קרוב יותר למה שמסלול של קובע ריבית מגלם. האמת בדרך כלל ביניהן, והפער בין השתיים הוא המדד הישר ביותר לשאלה כמה מהתחזית היא פרמיה ולא ציפייה.",
+    "method.p6": "<strong>צמוד מול לא צמוד.</strong> מסלולים צמודי מדד נקראים מעקום הריאלי (גליל), ולכן העוגנים שלהם הם ריביות <em>ריאליות</em> — הקרן וההחזר מוצמדים מעליהן. הפער בין שני העקומים באותו אופק הוא האינפלציה הנגזרת — המחיר שהשוק גובה על נטילת סיכון ההצמדה — וכאן הוא נע סביב 1.6% עד 1.8%, בתוך יעד בנק ישראל של 1–3%. הטבלה מציגה אותו רק כאשר שתי הרגליים הן נתוני שוק אמיתיים: מול עקום מקורב הוא היה ארטיפקט של מספר מומצא.",
+    "method.p7": "<strong>פריים.</strong> ריבית הפריים היא ריבית בנק ישראל בתוספת 1.5 נקודות אחוז לפי המקובל. מסלול הפורוורד שלה נלקח מהקצה הקצר — הפורוורד לשלושה חודשים <code class=\"k\">f(N/12, 0.25)</code> — כקירוב לריבית המדיניות הצפויה, ואז מתווספות 1.5 נקודות האחוז. הכיול הוא מול הפריים הנוכחי שאתם מזינים.",
+    "method.p8": "<strong>מוסכמות.</strong> ריביות האפס נקראות כריבית אפקטיבית שנתית. ההחזרים החודשיים מחושבים לפי המוסכמה הישראלית של ריבית נומינלית שנתית חלקי שתים‑עשרה. מחוץ לטווח התקופות שהוזנו העקום מוחזק שטוח ולא מוארך באקסטרפולציה.",
+    "method.p9": "<strong>העקום שנטען.</strong> העקום הלא צמוד מחבר שני מקורות בשנה אחת. עד שנה זה <strong>מק\"מ</strong> — מלווה קצרת מועד, תשואות לפדיון, הנקראות חיות מרשימת הבורסה לניירות ערך בתל אביב, נקודה אחת לכל מק\"מ בהנפקה. מ‑2 עד 15 שנים זה <em>שיעור התשואה הנומינלי הנגזר מאמידת עקום התשואות אפס</em> של בנק ישראל (<code class=\"k\">Statistics/shcd08_e.xls</code>), המפרסם <strong>ממוצעים חודשיים</strong> בשורות מתחלפות של סוף חודש (<em>קלנדרי</em>) ואמצע חודש (<em>מדדי</em>). נתונים ממוצעים מתאימים לעבודה על עוגנים, מכיוון שהעוגנים החוזיים עצמם נקראים מתשואות ממוצעות ולא מקיבוע של יום אחד. התאריך של כל מקור מופיע לידו ב<em>מקורות הנתונים</em> למעלה.",
+    "method.p10": "<strong>שלושה דברים נובעים מכך.</strong> שני המקורות נושאים <strong>תאריכים ובסיסי מיצוע שונים</strong>, ולכן הם אינם מסכימים בדיוק במקום שבו הם נפגשים: נקודת השנה של עקום האפס נמוכה בכמה נקודות בסיס מהמק\"מ לשנה. <strong>המק\"מ שולט בטווח 0–1 שנה</strong> כמכשיר קצר הטווח והתצפית הטרייה יותר — והוא שולט בכל הטווח, לא רק בתקופות שהוא במקרה מצטט. מק\"מים נפדים בתאריכים אמיתיים, ולכן הארוך שבהם נעצר בדרך כלל לפני שנה עגולה; במקרה כזה נקודת השנה מתקבלת באינטרפולציה מאותו מק\"מ אל נקודת השנתיים, ולא מרמת הממוצע הישן יותר. זה חשוב יותר מכפי שזה נשמע: עירוב השניים בתקופות סמוכות יוצר שקע קטן בעקום, וריבית פורוורד חייבת להשלים את השקע — מה שהופך פער רמה של כמה נקודות בסיס למשהו שנראה כמו עמדת שוק באופק של 12 חודשים. מעבר ל‑<strong>15 שנים</strong> העקום מוחזק שטוח, וזה מסומן במסלולים הקבועים הארוכים. וה<strong>מק\"מ הקצר ביותר יושב גבוה מהשכנים שלו</strong> — במרחק ימים מהפדיון מכפיל ההמרה לשנתי עצום, ולכן עיגול במחיר שלו שווה עשרות נקודות בסיס. הוא נשאר כפי שפורסם ואינו מוחלק בשקט, אבל התייחסו לקצה הקדמי של העקום בזהירות.",
+    "method.p11": "<strong>העקום צמוד המדד</strong> הוא <em>שיעור התשואה הריאלי הנגזר מאמידת עקום התשואות אפס</em> המקביל (<code class=\"k\">Statistics/shcd07_e.xls</code>) — עקום הגליל, אותה משפחת קבצים, אותו בסיס של ממוצעים חודשיים, מ‑1 עד 20 שנה. שימו לב שהוא <strong>קמור בקצה הקדמי</strong>: הוא יורד משנה עד כשלוש שנים לפני שהוא עולה שוב. לכן מסלול משתנה צמוד מדד מגלם עוגן ריאלי <em>יורד</em> בשנתיים הקרובות — הצורה ההפוכה מזו של הלא צמוד. מתחת לשנה הוא מוחזק שטוח, מה שחשוב לעמודת האינפלציה הנגזרת באופקים קצרים, ומעבר ל‑20 שנה המסלולים הקבועים הצמודים הארוכים מסמנים זאת.",
+    "method.p12": "שתי הרגליים <strong>נמדדות בתאריכים שונים</strong> — הקצה הקצר של העקום הנומינלי הוא קיבוע מק\"מ יומי, והעקום הריאלי הוא ממוצע אמצע חודש, בדרך כלל בהפרש של כשבועיים. האינפלציה הנגזרת היא ההפרש ביניהם, ולכן היא נושאת את פער התיארוך הזה. התאריך של כל רגל מוצג לידה ולא תאריך אחד לכל הדף, כי מספר אחד שם היה מטעה לגבי הרגל הישנה יותר.",
+    "method.notice": "<b>ריבית פורוורד היא מחיר, לא תחזית.</b> זה המקום שבו השוק מוכן לתת לכם לקבע ריבית עתידית היום, והיא מגלמת פרמיית זמן — כך שבעקום בעל שיפוע חיובי פורוורדים יושבים באופן שיטתי מעל התוצאה הממוצעת שמתממשת בפועל. קראו אותם כמסלול שהשוק מגלם, לא כתחזית למדיניות בנק ישראל. אין כאן ייעוץ פיננסי.",
+    "foot": "רעננו את העקום מאמידת עקום התשואות אפס של בנק ישראל (נומינלי למסלולים לא צמודים, ריאלי לצמודי מדד), המתפרסמת תחת סטטיסטיקה → אגרות חוב ומק\"מ. הזינו את התקופות שיש לכם; המחשבון מבצע אינטרפולציה ביניהן ומדווח באילו נקודות השתמש."
+  }
+};
+
+const RTL = new Set(["he"]);
+let LANG = "en";
+
+/** Translate. Missing Hebrew keys fall back to English rather than breaking. */
+function t(key, vars) {
+  let s = (I18N[LANG] && I18N[LANG][key]) ?? I18N.en[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split("{" + k + "}").join(v);
+  return s;
+}
+
+/**
+ * Apply a language to the document.
+ *
+ * Static text is tagged in the markup: data-i18n replaces textContent,
+ * data-i18n-html replaces innerHTML for strings that carry markup, and
+ * data-i18n-attr="attr:key,attr:key" covers placeholders and aria labels.
+ * Everything built in JS goes through t() and is regenerated by the re-render
+ * at the end, which is also what redraws the canvases — their labels are
+ * painted, not DOM, so nothing else would update them.
+ */
+function applyLang(lang, opts) {
+  LANG = I18N[lang] ? lang : "en";
+  const root = document.documentElement;
+  root.setAttribute("lang", LANG);
+  root.setAttribute("dir", RTL.has(LANG) ? "rtl" : "ltr");
+
+  document.title = t("doc.title");
+  const titleEl = document.querySelector("title");
+  if (titleEl) titleEl.textContent = t("doc.title");
+
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml);
+  for (const el of document.querySelectorAll("[data-i18n-attr]")) {
+    for (const pair of el.dataset.i18nAttr.split(",")) {
+      const [attr, key] = pair.split(":");
+      if (attr && key) el.setAttribute(attr.trim(), t(key.trim()));
+    }
+  }
+
+  const btn = $("langToggle");
+  if (btn) {
+    btn.textContent = t("lang.other");
+    btn.setAttribute("aria-label", t("lang.switchTo"));
+    btn.setAttribute("title", t("lang.switchTo"));
+  }
+
+  try { localStorage.setItem("lang", LANG); } catch { /* private mode */ }
+
+  if (!opts || !opts.initial) {
+    renderSources(); renderCurveEditor(); render();
+  }
+}
+
+/** Stored choice, else the browser's, else English. */
+function initialLang() {
+  try {
+    const saved = localStorage.getItem("lang");
+    if (saved && I18N[saved]) return saved;
+  } catch { /* private mode */ }
+  const nav = (navigator.languages || [navigator.language || ""]).join(",").toLowerCase();
+  return /\bhe\b|^he|iw/.test(nav) ? "he" : "en";
+}
 
 /**
  * Bank of Israel release calendar for the zero-coupon curve tables (shcd07 and
@@ -1452,6 +2091,15 @@ const TRACKS = {
   "prime":        { label: "Prime",                curve: "nominal", kind: "prime",    real: false }
 };
 
+/**
+ * Short name for a track. The dropdown carries a gloss the tiles don't want —
+ * "Variable, unlinked (משתנה לא צמודה)" — so English uses TRACKS' own short
+ * label and Hebrew uses the name, which needs no gloss in Hebrew.
+ */
+function trackLabel(key) {
+  return LANG === "en" ? TRACKS[key].label : t("track." + key);
+}
+
 /* ============================================================
    Model
    ============================================================ */
@@ -1468,13 +2116,13 @@ function compute() {
   let tenorYears, tenorLabel;
   if (track.kind === "variable") {
     tenorYears = Number($("resetMonths").value) / 12;
-    tenorLabel = Number($("resetMonths").value) + "m reset";
+    tenorLabel = t("tenor.reset", { n: Number($("resetMonths").value) });
   } else if (track.kind === "fixed") {
     tenorYears = Math.max(1, Number($("termYears").value) || 25);
-    tenorLabel = tenorYears + "y term";
+    tenorLabel = t("tenor.term", { n: tenorYears });
   } else {
     tenorYears = SHORT_TENOR;
-    tenorLabel = "policy proxy";
+    tenorLabel = t("tenor.policy");
   }
 
   const horizons = ($("horizons").value.match(/-?\d+(\.\d+)?/g) || [])
@@ -1570,24 +2218,25 @@ function deductionAt(months, rawAnchor, o) {
    Formatting
    ============================================================ */
 const pct = v => Number.isFinite(v) ? v.toFixed(2) + "%" : "—";
-const bp  = v => Number.isFinite(v) ? (v >= 0 ? "+" : "−") + Math.abs(Math.round(v * 100)) + " bp" : "—";
+const bp  = v => Number.isFinite(v) ? (v >= 0 ? "+" : "−") + Math.abs(Math.round(v * 100)) + " " + t("unit.bp") : "—";
 const ils = v => Number.isFinite(v)
   ? "₪" + Math.round(v).toLocaleString("en-US")
   : "—";
 /** 0.0833 -> "1m", 1.5 -> "18m", 15 -> "15y". Sub-year maturities read as months. */
-const tenorLabel = t => {
-  if (!Number.isFinite(t)) return "—";
-  if (t < 1) return Math.round(t * 12) + "m";
-  return (Math.abs(t - Math.round(t)) < 0.01 ? Math.round(t) : t.toFixed(1)) + "y";
+const tenorLabel = yrs => {
+  if (!Number.isFinite(yrs)) return "—";
+  if (yrs < 1) return Math.round(yrs * 12) + t("unit.m");
+  return (Math.abs(yrs - Math.round(yrs)) < 0.01 ? Math.round(yrs) : yrs.toFixed(1)) + t("unit.y");
 };
 
 /** "Today" / "1 month" / "18 months" — a horizon of 1 must not read "1 months". */
-const horizonLabel = m => m === 0 ? "Today" : m + (m === 1 ? " month" : " months");
+const horizonLabel = m => m === 0 ? t("horizon.today")
+  : (m === 1 ? t("horizon.one") : t("horizon.many", { n: m }));
 
 const shortDate = iso => {
   if (!iso) return "—";
   const [y, m] = iso.split("-");
-  return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m) - 1] + " " + y;
+  return t("months").split(",")[Number(m) - 1] + " " + y;
 };
 
 /* ============================================================
@@ -1617,9 +2266,9 @@ function renderHeadline(M) {
   $("hlValue").style.color = Math.abs(d) < 0.005 ? "var(--ink-2)"
     : (d > 0 ? "var(--rising)" : "var(--falling)");
   $("hlCaption").textContent = last.months === 0
-    ? "anchor today"
-    : "anchor in " + horizonLabel(last.months).toLowerCase() + " · " + bp(d) +
-      (M.adjOn ? " · adjusted" : "");
+    ? t("tile.anchorToday")
+    : t("tile.in", { h: horizonLabel(last.months) }) + " · " + bp(d) +
+      (M.adjOn ? " · " + t("col.adjusted") : "");
 }
 
 /**
@@ -1634,23 +2283,23 @@ function renderTiles(M) {
   const dir = Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "rising" : "falling");
 
   const tiles = [
-    { lab: "Anchor today",  val: pct(base.anchor),  cls: "is-primary",
-      sub: track.label + " · " + tenorLabel },
-    { lab: last.months === 0 ? "No horizon set" : "In " + horizonLabel(last.months).toLowerCase(),
+    { lab: t("tile.anchorToday"),  val: pct(base.anchor),  cls: "is-primary",
+      sub: trackLabel(M.trackKey) + " · " + tenorLabel },
+    { lab: last.months === 0 ? t("tile.noHorizon") : t("tile.in", { h: horizonLabel(last.months) }),
       val: pct(M.adjOn ? last.adjusted : last.anchor),
       cls: "is-project",
       sub: shortDate(last.date) + " · " +
-           (M.adjOn ? "adjusted, raw " + pct(last.anchor) : bp(d)) }
+           (M.adjOn ? t("tile.adjRaw", { v: pct(last.anchor) }) : bp(d)) }
   ];
 
   if (Number.isFinite(last.pay)) {
-    tiles.push({ lab: "Monthly payment", val: ils(M.adjOn ? last.adjPay : last.pay),
+    tiles.push({ lab: t("tile.payment"), val: ils(M.adjOn ? last.adjPay : last.pay),
       cls: dir === "rising" ? "is-rising" : dir === "falling" ? "is-falling" : "",
-      sub: "vs " + ils(base.pay) + " today" });
+      sub: t("tile.vsToday", { v: ils(base.pay) }) });
   } else {
-    tiles.push({ lab: "Change", val: bp(d),
+    tiles.push({ lab: t("tile.change"), val: bp(d),
       cls: dir === "rising" ? "is-rising" : dir === "falling" ? "is-falling" : "",
-      sub: '<span class="pill ' + dir + '">' + (dir === "flat" ? "flat path" : dir + " path") + "</span>" });
+      sub: '<span class="pill ' + dir + '">' + t("pill." + dir) + "</span>" });
   }
 
   $("tiles").innerHTML = tiles.map(t =>
@@ -1667,25 +2316,26 @@ function renderTable(M) {
   const showBreakeven = !!(M.nom && M.real)
     && state.prov.real.kind !== "builtin" && state.prov.nominal.kind !== "builtin";
   const showPay = Number.isFinite(base.pay);
-  const anchorWord = track.real ? "Real anchor" : (track.kind === "prime" ? "Prime" : "Anchor");
+  const anchorWord = track.real ? t("word.anchorReal") : (track.kind === "prime" ? t("word.prime") : t("word.anchor"));
 
   // The card ships collapsed, so its summary has to say what is inside it —
   // a closed heading that doesn't name its contents just reads as a dead row.
   const nHoriz = rows.filter(r => r.months > 0).length;
-  $("projTitle").textContent = "Projected " + anchorWord.toLowerCase() +
-    " · " + nHoriz + (nHoriz === 1 ? " horizon" : " horizons");
-  $("projMeta").textContent = track.label + " · " + tenorLabel +
-    (state.calibrate ? " · calibrated" : " · raw curve");
+  $("projTitle").textContent = t("proj.title", { anchor: anchorWord,
+    n: nHoriz === 1 ? t("proj.horizons.one") : t("proj.horizons.many", { n: nHoriz }) });
+  $("projMeta").textContent = trackLabel(M.trackKey) + " · " + tenorLabel +
+    " · " + (state.calibrate ? t("proj.calibrated") : t("proj.rawCurve"));
 
   const adjOn = M.adjOn;
-  const cols = [["Horizon", "lead"], ["Date", ""], [anchorWord + " (raw)", ""]];
-  if (adjOn) cols.push(["Adjusted", ""]);
-  cols.push(["Δ raw", ""]);
-  if (adjOn) cols.push(["Δ adj.", ""]);
-  cols.push(["Incl. margin", ""]);
-  if (showPay) cols.push(["Monthly", ""]);
+  const cols = [[t("col.horizon"), "lead"], [t("col.date"), ""],
+                [t("col.raw", { anchor: anchorWord }), ""]];
+  if (adjOn) cols.push([t("col.adjusted"), ""]);
+  cols.push([t("col.dRaw"), ""]);
+  if (adjOn) cols.push([t("col.dAdj"), ""]);
+  cols.push([t("col.margin"), ""]);
+  if (showPay) cols.push([t("col.monthly"), ""]);
   // Breakeven needs both curves, so it inherits the weaker one's standing.
-  if (showBreakeven) cols.push(["Breakeven infl.", ""]);
+  if (showBreakeven) cols.push([t("col.breakeven"), ""]);
 
   $("projHead").innerHTML = cols.map(c => '<th scope="col">' + c[0] + "</th>").join("");
 
@@ -1712,11 +2362,8 @@ function renderTable(M) {
   }).join("");
 
   const notes = [];
-  if (adjOn) notes.push("<b>Adjusted</b> strips an estimated term premium from the raw forward — " +
-    escapeHtml(adjDescription(M)) + ". Grey figures in the margin and payment columns are the " +
-    "adjusted readings. Today's row is never adjusted: it is observed, not forecast.");
-  if (showBreakeven) notes.push("<b>Breakeven inflation</b> is the gap between the unlinked and " +
-    "CPI-linked curves at the same horizon — the market's price for taking indexation risk.");
+  if (adjOn) notes.push(t("note.adjusted", { desc: escapeHtml(adjDescription(M)) }));
+  if (showBreakeven) notes.push(t("note.breakeven"));
   $("tableFoot").hidden = !notes.length;
   $("tableFoot").innerHTML = notes.join("<br><br>");
 }
@@ -1724,15 +2371,9 @@ function renderTable(M) {
 /** Plain-language statement of exactly what is being subtracted. */
 function adjDescription(M) {
   const p = Number(M.adjParam);
-  if (M.adjMethod === "slope") {
-    return "here " + (M.lambda * 100).toFixed(1) + " bp per year of horizon, read off the slope " +
-           "of this curve's far end";
-  }
-  if (M.adjMethod === "fixed") return "here " + (Number.isFinite(p) ? p : 0) + " bp per year of horizon";
-  if (M.adjMethod === "shrink") {
-    return "here the projected rise is shrunk " + (Number.isFinite(p) ? p : 0) + "% back toward " +
-           "today's level";
-  }
+  if (M.adjMethod === "slope") return t("adj.desc.slope", { bp: (M.lambda * 100).toFixed(1) });
+  if (M.adjMethod === "fixed") return t("adj.desc.fixed", { bp: Number.isFinite(p) ? p : 0 });
+  if (M.adjMethod === "shrink") return t("adj.desc.shrink", { pct: Number.isFinite(p) ? p : 0 });
   return "";
 }
 
@@ -1743,26 +2384,20 @@ function renderHints(M) {
   // merely cosmetic elsewhere. Saying "optional" on both would be wrong.
   const fixed = M.track.kind === "fixed";
   $("termOpt").hidden = fixed;
-  $("termHint").textContent = fixed
-    ? "The tenor the fixed rate is read from on the curve — this is what the projection prices."
-    : "Not used for this track's anchor; shown for context only.";
+  $("termHint").textContent = t(fixed ? "hint.term.fixed" : "hint.term.other");
 
   const isPrime = M.track.kind === "prime";
-  $("anchorLab").textContent = isPrime ? "Prime today (%)"
-    : M.track.real ? "Real anchor today (%)" : "Anchor today (%)";
-  $("anchorHint").textContent = isPrime
-    ? "Currently 5.00% — the Bank of Israel rate of 3.50% plus the 1.5pp convention."
-    : "Your contract's current anchor, as quoted by the bank.";
-  $("marginLab").textContent = isPrime ? "Prime discount (%)" : "Bank margin (%)";
+  $("anchorLab").textContent = t(isPrime ? "lab.anchor.prime"
+    : M.track.real ? "lab.anchor.real" : "lab.anchor");
+  $("anchorHint").textContent = t(isPrime ? "hint.anchor.prime" : "hint.anchor");
+  $("marginLab").textContent = t(isPrime ? "lab.margin.prime" : "lab.margin");
 
   const off = M.offset;
   const wide = Math.abs(off) > 0.75;   // >75bp says the anchor and curve disagree badly
   $("calHint").innerHTML = state.calibrate
-    ? "Curve says " + pct(M.rawToday) + " today; your contract says " + pct(M.statedAnchor) +
-      ". Carrying " + bp(off) + " across all horizons." +
-      (wide ? ' <b style="color:var(--project)">That gap is large — check the anchor above is the ' +
-              (M.track.real ? "real" : "nominal") + " rate for this track, and that the curve is current.</b>" : "")
-    : "Showing unadjusted forwards. Your stated anchor is ignored.";
+    ? t("cal.on", { curve: pct(M.rawToday), stated: pct(M.statedAnchor), off: bp(off) }) +
+      (wide ? t("cal.wide", { kind: t(M.track.real ? "cal.kind.real" : "cal.kind.nominal") }) : "")
+    : t("cal.off");
 
   // The curve is held flat outside the maturities it actually contains. Say so —
   // silently extrapolating is how a plausible number becomes a wrong one.
@@ -1770,19 +2405,19 @@ function renderHints(M) {
   const warn = [];
   if (cov) {
     const longest = (Math.max(...M.rows.map(r => r.months)) / 12) + M.tenorYears;
-    if (longest > cov.max + 1e-9) warn.push("flat beyond " + tenorLabel(cov.max));
-    if (M.tenorYears < cov.min - 1e-9) warn.push("flat below " + tenorLabel(cov.min));
+    if (longest > cov.max + 1e-9) warn.push(t("warn.flatAbove", { t: tenorLabel(cov.max) }));
+    if (M.tenorYears < cov.min - 1e-9) warn.push(t("warn.flatBelow", { t: tenorLabel(cov.min) }));
   }
   if (warn.length) $("projMeta").textContent += " · " + warn.join(" · ");
 
   // Slope-adjustment controls and readout.
   const meta = ADJ[M.adjMethod] || ADJ.none;
   $("wrapAdjParam").hidden = !meta.param;
-  if (meta.param) $("adjParamLab").textContent = meta.param;
+  if (meta.param) $("adjParamLab").textContent = t("adjParam." + M.adjMethod);
   const ro = $("adjReadout");
   ro.classList.toggle("is-live", M.adjOn);
   if (!M.adjOn) {
-    ro.innerHTML = "<span class='leg'>Showing <b>raw forwards</b>, term premium included</span>";
+    ro.innerHTML = "<span class='leg'>" + t("adj.showingRaw") + "</span>";
   } else {
     // perYr is bp/year, so perYr × years is bp — not pp.
     const perYr = M.adjMethod === "shrink" ? null
@@ -1791,12 +2426,10 @@ function renderHints(M) {
     const si = M.slopeInfo || {};
     ro.innerHTML = "<span class='leg'>" + escapeHtml(adjDescription(M)) + "</span>" +
       (M.adjMethod === "slope" && si.from != null
-        ? "<span class='parts'>↳ from the " + tenorLabel(si.from) + "→" + tenorLabel(si.to) +
-          " segment of this curve</span>"
+        ? "<span class='parts'>" + t("adj.fromSegment", { from: tenorLabel(si.from), to: tenorLabel(si.to) }) + "</span>"
         : "") +
       (perYr != null
-        ? "<span class='parts'>↳ " + Math.round(perYr * (maxM / 12)) +
-          " bp deducted at the " + maxM + "-month horizon</span>"
+        ? "<span class='parts'>" + t("adj.deducted", { bp: Math.round(perYr * (maxM / 12)), m: maxM }) + "</span>"
         : "");
   }
 
@@ -1813,22 +2446,17 @@ function renderHints(M) {
     !(stale.length || shortGap || (M.track.real && state.prov.real.kind === "builtin"));
   if (!$("coverageWarning").hidden) {
     $("coverageWarning").querySelector("span").innerHTML = stale.length
-      ? "<b>The Bank of Israel has published newer figures than the " +
-        (stale.length > 1 ? "curves" : "curve") + " loaded here.</b> " +
-        stale.map(x => escapeHtml(x.d.button) + " is dated " +
-          state.src[x.d.key].asOf + "; " + x.ps.missed.length +
-          (x.ps.missed.length > 1 ? " releases have" : " release has") +
-          " gone out since, most recently " + x.ps.latest.date +
-          " (" + x.ps.latest.type + " average)").join(". ") +
-        ". Download the current table and load it in the <em>Zero curve</em> panel — " +
-        "every figure here is read off these files."
+      ? t(stale.length > 1 ? "warn.stale.many" : "warn.stale.one") +
+        stale.map(x => t("warn.stale.item", {
+          name: escapeHtml(t("src." + x.d.key + ".button")),
+          date: state.src[x.d.key].asOf,
+          n: x.ps.missed.length,
+          rel: t(x.ps.missed.length > 1 ? "warn.stale.relMany" : "warn.stale.relOne"),
+          latest: x.ps.latest.date, type: t("pub." + x.ps.latest.type) })).join(". ") +
+        t("warn.stale.tail")
       : shortGap
-      ? "<b>This curve starts at " + tenorLabel(cov.min) + ", so it can't price a 3-month rate.</b> " +
-        "The prime path below is extrapolated flat from the " + tenorLabel(cov.min) + " point and is " +
-        "not meaningful. Load a short-end curve (Makam covers 1–12 months), or read the prime path " +
-        "from the Bank of Israel rate directly."
-      : "<b>The CPI-linked curve is a placeholder</b>, so this track's real anchors are an " +
-        "estimate rather than market data. Load the Galil zero curve to make them real.";
+      ? t("warn.shortGap", { t: tenorLabel(cov.min) })
+      : t("warn.placeholderReal");
   }
 }
 
@@ -2036,7 +2664,7 @@ function drawPath(M) {
         r === rows[rows.length - 1]) keep.push(r);
   }
   axes(g, w, h, pad, sc, v => v.toFixed(2), keep.map(r => ({
-    v: r.months, label: r.months === 0 ? "now" : r.months + "m"
+    v: r.months, label: r.months === 0 ? t("chart.now") : r.months + t("unit.m")
   })), xOf);
 
   // Today's level as a reference.
@@ -2102,29 +2730,31 @@ function drawPath(M) {
   }
 
   $("pathLegend").innerHTML =
-    '<span><i style="background:' + proj + '"></i>Raw forward ' +
-      (M.track.real ? "real anchor" : "anchor") + (state.calibrate ? " (calibrated)" : " (uncalibrated)") + "</span>" +
+    '<span><i style="background:' + proj + '"></i>' +
+      t("legend.raw", { anchor: t(M.track.real ? "legend.anchorReal" : "legend.anchor") }) + " " +
+      t(state.calibrate ? "legend.raw.calibrated" : "legend.raw.uncalibrated") + "</span>" +
     (M.adjOn ? '<span><i style="background:' + prim +
       ';background-image:repeating-linear-gradient(90deg,' + prim + ' 0 5px,transparent 5px 9px)"></i>' +
-      "Adjusted — term premium removed</span>" : "") +
-    '<span><i style="background:' + prim + '"></i>Level today · ' + pct(M.rows[0].anchor) + "</span>";
+      t("legend.adjusted") + "</span>" : "") +
+    '<span><i style="background:' + prim + '"></i>' +
+      t("legend.levelToday", { v: pct(M.rows[0].anchor) }) + "</span>";
 
   // Hover readout: one column per plotted horizon, carrying the row's own
   // numbers so the tooltip and the table can never disagree.
   const showPay = Number.isFinite(M.base.pay);
   cv.__hit = { pad, w, h, cols: rows.map(r => {
     const d = r.anchor - M.base.anchor;
-    const tipRows = [{ name: "Raw", col: proj, text: pct(r.anchor), py: yOf(r.anchor) }];
+    const tipRows = [{ name: t("tip.raw"), col: proj, text: pct(r.anchor), py: yOf(r.anchor) }];
     if (M.adjOn && Number.isFinite(r.adjusted)) {
-      tipRows.push({ name: "Adjusted", col: prim, text: pct(r.adjusted), py: yOf(r.adjusted) });
-      tipRows.push({ name: "Premium out", col: "transparent",
-        text: (r.deducted * 100).toFixed(0) + " bp", py: NaN });
+      tipRows.push({ name: t("tip.adjusted"), col: prim, text: pct(r.adjusted), py: yOf(r.adjusted) });
+      tipRows.push({ name: t("tip.premiumOut"), col: "transparent",
+        text: (r.deducted * 100).toFixed(0) + " " + t("unit.bp"), py: NaN });
     }
-    tipRows.push({ name: "vs today", col: "transparent",
+    tipRows.push({ name: t("tip.vsToday"), col: "transparent",
       text: r.months === 0 ? "—" : bp(d), py: NaN });
-    tipRows.push({ name: "Incl. margin", col: "transparent",
+    tipRows.push({ name: t("tip.margin"), col: "transparent",
       text: pct(M.adjOn ? r.adjFull : r.full), py: NaN });
-    if (showPay && Number.isFinite(r.pay)) tipRows.push({ name: "Monthly", col: "transparent",
+    if (showPay && Number.isFinite(r.pay)) tipRows.push({ name: t("tip.monthly"), col: "transparent",
       text: ils(M.adjOn ? r.adjPay : r.pay), py: NaN });
     return {
       key: r.months,
@@ -2158,21 +2788,23 @@ function sourceKeyOf(file) {
  * curve estimation. Filenames stay in the provenance block, where they belong.
  */
 function seriesTitle(file, leg) {
+  const key = sourceKeyOf(file);
+  if (key) return t("series." + key);
   const f = String(file).toLowerCase();
-  if (f.includes("makam") || f.includes("\u05de\u05db\u05dd")) return "Makam (T-bill) yields";
-  if (f.includes("shcd08")) return "Government bond yields \u00b7 nominal zero-coupon curve";
-  if (f.includes("shcd07")) return "Government bond yields \u00b7 CPI-linked (real) zero-coupon curve";
-  if (f.includes("galil") || f.includes("\u05d2\u05dc\u05d9\u05dc")) return "Government bond yields \u00b7 CPI-linked (real) zero-coupon curve";
-  if (f.includes("shahar") || f.includes("\u05e9\u05d7\u05e8")) return "Government bond yields \u00b7 nominal zero-coupon curve";
+  if (f.includes("\u05de\u05db\u05dd")) return t("series.makam");
+  if (f.includes("galil") || f.includes("\u05d2\u05dc\u05d9\u05dc")) return t("series.shcd07");
+  if (f.includes("shahar") || f.includes("\u05e9\u05d7\u05e8")) return t("series.shcd08");
   // Unknown file: name the leg rather than inventing a description of it.
-  return (leg === "real" ? "CPI-linked (real)" : "Nominal") + " zero curve \u00b7 " + file;
+  return t("series.unknown", { leg: t(leg === "real" ? "series.real" : "series.nominal"), file });
 }
 
 /** Compact form for the hover card, where the leg is already named beside it. */
 function seriesShort(seg) {
+  if (seg.key === "makam") return t("series.short.makam");
+  if (seg.key === "shcd08" || seg.key === "shcd07") return t("series.short.zero");
   const f = String(seg.file || seg.label || "").toLowerCase();
-  if (f.includes("makam") || /makam/i.test(seg.label || "")) return "Makam";
-  if (/zero.?coupon/i.test(seg.label || "") || f.includes("shcd")) return "zero-coupon curve";
+  if (f.includes("makam") || /makam/i.test(seg.label || "")) return t("series.short.makam");
+  if (/zero.?coupon/i.test(seg.label || "") || f.includes("shcd")) return t("series.short.zero");
   return seg.label || "source";
 }
 
@@ -2233,8 +2865,8 @@ function drawCurves(M) {
   const pad = { l: 48, r: 16, t: 14, b: 28 };
 
   const curves = [];
-  if (M.nom)  curves.push({ c: M.nom,  leg: "nominal", col: tok("--primary"), name: "Unlinked (nominal)" });
-  if (M.real) curves.push({ c: M.real, leg: "real",    col: tok("--project"), name: "CPI-linked (real)" });
+  if (M.nom)  curves.push({ c: M.nom,  leg: "nominal", col: tok("--primary"), name: t("series.nominal") });
+  if (M.real) curves.push({ c: M.real, leg: "real",    col: tok("--project"), name: t("series.real") });
   if (!curves.length) return;
 
   const tMax = Math.min(30, Math.max(...curves.map(x => x.c.max)));
@@ -2256,7 +2888,7 @@ function drawCurves(M) {
   const yOf = v => pad.t + (h - pad.t - pad.b) * (1 - (v - sc.lo) / (sc.hi - sc.lo));
 
   const ticks = [0.25, 1, 2, 3, 5, 10, 20, 30].filter(t => t <= tMax)
-    .map(t => ({ v: t, label: t < 1 ? Math.round(t * 12) + "m" : t + "y" }));
+    .map(v => ({ v, label: v < 1 ? Math.round(v * 12) + t("unit.m") : v + t("unit.y") }));
   axes(g, w, h, pad, sc, v => v.toFixed(2), ticks, xOf);
 
   // Shade the forward window actually being read: [T_max, T_max + tenor].
@@ -2272,7 +2904,7 @@ function drawCurves(M) {
     g.stroke();
     g.font = "10px " + tok("--mono").split(",")[0] + ", monospace";
     g.fillStyle = tok("--project"); g.textAlign = "center"; g.textBaseline = "top";
-    g.fillText("forward window", (xOf(a) + xOf(b)) / 2, pad.t + 2);
+    g.fillText(t("chart.forwardWindow"), (xOf(a) + xOf(b)) / 2, pad.t + 2);
   }
 
   let anyExtrap = false, anySplice = false;
@@ -2325,12 +2957,14 @@ function drawCurves(M) {
   $("curveLegend").innerHTML = series.flatMap(s => {
     const segs = segsFor(s.leg, s.col);
     if (!segs.length) return ['<span><i style="background:' + s.col + '"></i>' + s.name +
-      " · " + s.c.n + " points · " + tenorLabel(s.c.min) + "–" + tenorLabel(s.c.max) + "</span>"];
+      " · " + t("legend.points", { n: s.c.n }) + " · " + tenorLabel(s.c.min) + "–" + tenorLabel(s.c.max) + "</span>"];
+    // Prefer the source KEY over the stored label: labels are baked into the
+    // provenance at merge time, so a language switch would leave them behind.
     return segs.map(sg => '<span><i style="background:' + sg.col + '"></i>' +
-      escapeHtml(sg.label) + " · " + tenorLabel(sg.from) + "–" + tenorLabel(sg.to) + "</span>");
-  }).join("") + '<span style="color:var(--ink-3)">dots are entered maturities · x-axis is √t' +
-    (anySplice ? " · grey = interpolated across the splice" : "") +
-    (anyExtrap ? " · dashed = held flat, not data" : "") + "</span>";
+      escapeHtml(sg.key ? t("series." + sg.key) : sg.label) + " · " + tenorLabel(sg.from) + "–" + tenorLabel(sg.to) + "</span>");
+  }).join("") + '<span style="color:var(--ink-3)">' + t("legend.dots") +
+    (anySplice ? t("legend.splice") : "") +
+    (anyExtrap ? t("legend.extrap") : "") + "</span>";
 
   // Hover readout: one column per entered maturity, across both curves. A curve
   // that has no knot there still reports its value, flagged as read off the
@@ -2338,25 +2972,27 @@ function drawCurves(M) {
   // makes visually, said in words.
   const knots = [...new Set(series.flatMap(s => s.c.knots))]
     .filter(t => t >= 0.08 && t <= tMax).sort((a, b) => a - b);
-  cv.__hit = { pad, w, h, cols: knots.map(t => ({
-    key: t,
-    px: xOf(t),
-    title: tenorLabel(t) + " maturity",
+  // `mat`, not `t`: t() is the translator, and shadowing it here is how the
+  // tooltip ends up calling a number.
+  cv.__hit = { pad, w, h, cols: knots.map(mat => ({
+    key: mat,
+    px: xOf(mat),
+    title: t("tip.maturity", { t: tenorLabel(mat) }),
     rows: series.map(s => {
-      const entered = s.c.knots.some(k => Math.abs(k - t) < 1e-9);
-      const held = t < s.c.min - 1e-9 || t > s.c.max + 1e-9;
+      const entered = s.c.knots.some(k => Math.abs(k - mat) < 1e-9);
+      const held = mat < s.c.min - 1e-9 || mat > s.c.max + 1e-9;
       const segs = segsFor(s.leg, s.col);
-      const seg = segs[segAt(segs, t)] || (held ? segs[segNear(segs, t)] : undefined);
+      const seg = segs[segAt(segs, mat)] || (held ? segs[segNear(segs, mat)] : undefined);
       // Name the file an entered point came from — the whole point of the
       // colouring is that these maturities are different measurements.
       const where = entered ? (seg ? " · " + seriesShort(seg) : "")
-                  : held ? " · held flat"
-                  : (seg || !segs.length) ? " · interpolated" : " · between sources";
+                  : held ? t("tip.heldFlat")
+                  : (seg || !segs.length) ? t("tip.interpolated") : t("tip.between");
       return {
         name: s.name.replace(/ \(.*\)$/, "") + where,
         col: seg ? seg.col : (segs.length && !entered ? tok("--ink-3") : s.col),
-        text: pct(s.c.z(t) * 100),
-        py: yOf(s.c.z(t) * 100)
+        text: pct(s.c.z(mat) * 100),
+        py: yOf(s.c.z(mat) * 100)
       };
     })
   })) };
@@ -3193,18 +3829,18 @@ function pairsFrom(arr) {
  * Returns {nominal, real, asOf} — legs absent from the source come back null.
  */
 function parseCurvePayload(text) {
-  const t = text.trim();
-  if (t.startsWith("{") || t.startsWith("[")) {
+  const txt = text.trim();
+  if (txt.startsWith("{") || txt.startsWith("[")) {
     let obj;
-    try { obj = JSON.parse(t); } catch { return { error: "That file isn't valid JSON." }; }
+    try { obj = JSON.parse(txt); } catch { return { error: t("err.badJson") }; }
     if (Array.isArray(obj)) {
       const pts = pairsFrom(obj);
-      return pts.length ? { single: pts, asOf: null } : { error: "No maturity/rate pairs in that JSON." };
+      return pts.length ? { single: pts, asOf: null } : { error: t("err.noPairs") };
     }
     if (Array.isArray(obj.nominal) || Array.isArray(obj.real)) {
       const nom = Array.isArray(obj.nominal) ? pairsFrom(obj.nominal) : null;
       const real = Array.isArray(obj.real) ? pairsFrom(obj.real) : null;
-      if (!nom?.length && !real?.length) return { error: "curve.json has no usable points." };
+      if (!nom?.length && !real?.length) return { error: t("err.noPoints") };
       // refresh-curve.mjs records every source it spliced; carry that through so
       // a merged curve still shows what it was built from.
       const byLeg = {}, segsByLeg = {};
@@ -3235,18 +3871,18 @@ function parseCurvePayload(text) {
         asOf: obj.asOf || null, legAsOf, parts: byLeg, segs: segsByLeg
       };
     }
-    return { error: "Unrecognised JSON shape — expected {nominal, real} or a list of pairs." };
+    return { error: t("err.badShape") };
   }
-  const { points, asOf } = rowsToCurveAuto(parseDelimited(t));
+  const { points, asOf } = rowsToCurveAuto(parseDelimited(txt));
   if (points.length) return { single: points, asOf };
 
   // Hand-typed input mixes separators line to line ("3m, 3.55%", "6mo  3.45",
   // "1y: 3.40"), which no single-delimiter table parse can handle. Fall back to
   // reading one maturity/rate pair per line.
-  const loose = parseLinePairs(t);
+  const loose = parseLinePairs(txt);
   if (loose.length) return { single: loose, asOf: null };
 
-  return { error: "Couldn't find a maturity column and a rate column in that file." };
+  return { error: t("err.noColumns") };
 }
 
 /** One "<maturity> <rate>" pair per line, any separator. */
@@ -3282,7 +3918,7 @@ function applyCurvePayload(res, label, kind) {
     if (res.nominal) { state.nominal = tidy(res.nominal); legs.push("nominal"); }
     if (res.real)    { state.real = tidy(res.real);       legs.push("real"); }
   }
-  if (!legs.length) return "Nothing to load from that file.";
+  if (!legs.length) return t("err.nothing");
 
   const asOf = normaliseAsOf(res.asOf);
   // The curve's own date is a property of the file, reported in the provenance
@@ -3349,8 +3985,8 @@ function renderProvenance() {
     const p = state.prov[l];
     const est = p.kind === "builtin";
     return '<span class="leg' + (est ? " is-est" : "") + '">' +
-      LEG_NAME[l] + ": <b>" + escapeHtml(p.label) + "</b>" +
-      '<span class="stamp"> · ' + state[l].length + " pts" +
+      t("leg." + l) + ": <b>" + escapeHtml(p.label) + "</b>" +
+      '<span class="stamp"> · ' + t("prov.pts", { n: state[l].length }) +
       (p.asOf ? " · " + p.asOf : "") + "</span></span>" +
       // Every source it was built from. Listed even when there is only one:
       // the leg's own label is the series name now, so this line is the only
@@ -3364,12 +4000,8 @@ function renderProvenance() {
   notice.hidden = !anyPlaceholder;
   if (anyPlaceholder) {
     const names = ["nominal", "real"].filter(l => state.prov[l].kind === "builtin")
-      .map(l => l === "real" ? "CPI-linked" : "unlinked").join(" and ");
-    notice.querySelector("span").innerHTML =
-      "<b>The " + names + " curve is an illustrative placeholder</b>, not market data — the " +
-      "loaded Bank of Israel files carry nominal yields only. CPI-linked tracks read off it are " +
-      "estimates, and the breakeven inflation column is withheld until then. Load a Galil zero " +
-      "curve and both become real.";
+      .map(l => t("notice.name." + l)).join(t("notice.and"));
+    notice.querySelector("span").innerHTML = t("notice.placeholder", { names });
   }
 }
 
@@ -3542,24 +4174,24 @@ async function ingestSource(key, file) {
     let res;
     if (looksBinaryWorkbook(bytes, file.name)) {
       const picked = bestSheet(await readWorkbook(buf));
-      if (!picked) throw new Error("no maturity/rate table found in that workbook");
+      if (!picked) throw new Error(t("err.noTableWb"));
       res = picked.res;
     } else {
       res = rowsToCurveAuto(parseDelimited(new TextDecoder().decode(bytes)));
     }
-    if (!res.points.length) throw new Error("no maturity/rate pairs found");
+    if (!res.points.length) throw new Error(t("err.noPairsFound"));
     const points = normaliseScale(res.points);
 
     state.src[key] = {
       points: tidy(points), asOf: normaliseAsOf(res.asOf) || null,
       file: file.name, builtin: false
     };
-    if (!mergeLeg(def.leg)) throw new Error("nothing to merge");
+    if (!mergeLeg(def.leg)) throw new Error(t("err.noMerge"));
 
     reseedAnchor();
     renderSources(); renderCurveEditor(); render();
   } catch (e) {
-    flashSource(key, e.message || "could not read that file");
+    flashSource(key, e.message || t("err.cantRead"));
   }
 }
 
@@ -3578,12 +4210,12 @@ function renderSources() {
     const cur = state.src[d.key];
     const seg = ((state.prov[d.leg] || {}).segs || []).find(x => x.key === d.key);
     let status, cls;
-    if (!cur) { status = "not loaded"; cls = "is-none"; }
+    if (!cur) { status = t("src.notLoaded"); cls = "is-none"; }
     else {
       // Name the file either way: a built-in curve came from a real download
       // too, and hiding which one until someone uploads is a gap in the record.
-      status = (cur.builtin ? "built in · " : "") +
-        (cur.file || "—") + " · " + (cur.asOf || "no date");
+      status = (cur.builtin ? t("src.builtIn") + " · " : "") +
+        (cur.file || "—") + " · " + (cur.asOf || t("src.noDate"));
       cls = cur.builtin ? "is-baked" : "is-live";
     }
     const range = seg ? tenorLabel(seg.from) + "–" + tenorLabel(seg.to) : "";
@@ -3592,16 +4224,15 @@ function renderSources() {
     const ps = d.scheduled && cur ? pubStatus(cur.asOf) : null;
     let note = "";
     if (ps && ps.stale) {
-      note = '<span class="src-stale">newer figures published ' + ps.latest.date +
-        " (" + ps.latest.type + ")" +
-        (ps.missed.length > 1 ? " · " + ps.missed.length + " releases behind" : "") + "</span>";
+      note = '<span class="src-stale">' + t("src.newer", { date: ps.latest.date, type: t("pub." + ps.latest.type) }) +
+        (ps.missed.length > 1 ? t("src.behind", { n: ps.missed.length }) : "") + "</span>";
       cls += " is-stale";
     } else if (ps && ps.next) {
-      note = '<span class="src-next">next release ' + ps.next.date + " (" + ps.next.type + ")</span>";
+      note = '<span class="src-next">' + t("src.next", { date: ps.next.date, type: t("pub." + ps.next.type) }) + "</span>";
     }
     return '<div class="src ' + cls + '" data-key="' + d.key + '">' +
-      '<button type="button" class="chip" data-load="' + d.key + '">' + escapeHtml(d.button) + "</button>" +
-      '<span class="src-hint">' + escapeHtml(d.hint) + "</span>" +
+      '<button type="button" class="chip" data-load="' + d.key + '">' + escapeHtml(t("src." + d.key + ".button")) + "</button>" +
+      '<span class="src-hint">' + escapeHtml(t("src." + d.key + ".hint")) + "</span>" +
       '<span class="src-state">' + escapeHtml(status) + (range ? " · " + range : "") + "</span>" +
       note + "</div>";
   }).join("");
@@ -3615,7 +4246,7 @@ function flashSource(key, msg) {
   const el = $("srcGrid").querySelector('.src[data-key="' + key + '"] .src-state');
   if (!el) return;
   const prev = el.textContent;
-  el.textContent = "could not read: " + msg;
+  el.textContent = t("src.cantRead", { msg });
   el.classList.add("bad");
   setTimeout(() => { el.textContent = prev; el.classList.remove("bad"); }, 6000);
 }
@@ -3638,8 +4269,8 @@ async function dropFile(file) {
     const bytes = new Uint8Array(buf);
     if (!looksBinaryWorkbook(bytes, file.name)) {
       const text = new TextDecoder().decode(bytes);
-      const t = text.trim();
-      if (t.startsWith("{") || t.startsWith("[")) {
+      const txt = text.trim();
+      if (txt.startsWith("{") || txt.startsWith("[")) {
         const err = applyCurvePayload(parseCurvePayload(text), file.name, "file");
         if (err) return flashDrop("is-bad", err);
         renderSources();
@@ -3649,7 +4280,7 @@ async function dropFile(file) {
     const res = looksBinaryWorkbook(bytes, file.name)
       ? (bestSheet(await readWorkbook(buf)) || {}).res
       : rowsToCurveAuto(parseDelimited(new TextDecoder().decode(bytes)));
-    if (!res || !res.points.length) return flashDrop("is-bad", "No maturity/rate table in that file.");
+    if (!res || !res.points.length) return flashDrop("is-bad", t("err.noTable"));
     const points = normaliseScale(res.points);
     const maxT = Math.max(...points.map(p => p[0]));
     const maxR = Math.max(...points.map(p => p[1]));
@@ -3658,9 +4289,9 @@ async function dropFile(file) {
     const key = maxT <= 1.5 ? "makam" : (maxR < 3 ? "shcd07" : "shcd08");
     flashDrop(null, null);
     await ingestSource(key, file);
-    flashDrop(null, "Loaded as " + SOURCE_BY_KEY[key].button + ".");
+    flashDrop(null, t("ok.loadedAs", { name: t("src." + key + ".button") }));
   } catch (e) {
-    flashDrop("is-bad", e.message || "Couldn't read that file.");
+    flashDrop("is-bad", e.message || t("err.cantRead"));
   }
 }
 
@@ -3745,7 +4376,12 @@ window.addEventListener("resize", () => {
 if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
+$("langToggle").addEventListener("click", () => applyLang(LANG === "he" ? "en" : "he"));
+
 mergeAll();
+// Language before the first paint: applyLang with initial:true only sets the
+// document and the static strings, leaving the render below to do the rest once.
+applyLang(initialLang(), { initial: true });
 renderSources();
 renderCurveEditor();
 render();

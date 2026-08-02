@@ -149,6 +149,37 @@ Two traps found the hard way:
   pinned colour and its series name. An API path makes a terrible label, which is
   why sources can set `label` explicitly.
 
+## Language
+
+English and Hebrew, both in `index.html`. `I18N` holds one flat table per
+language; `t(key, vars)` interpolates `{name}` placeholders and **falls back to
+English for any key Hebrew does not define**, so a half-finished translation
+shows English rather than `undefined`.
+
+- **Static markup** is tagged: `data-i18n` (textContent), `data-i18n-html`
+  (innerHTML, for strings carrying markup) and `data-i18n-attr="aria-label:key"`.
+- **Anything built in JS must go through `t()`.** `applyLang` re-renders, which is
+  also what repaints the canvases — their labels are drawn, not DOM, so nothing
+  else would update them.
+- **Don't shadow `t`.** A local `const t = text.trim()` or a `knots.map(t => …)`
+  silently turns every `t("key")` inside that scope into "call a string". This bit
+  twice while translating; the locals are now `txt` and `mat`.
+- **RTL is logical, not mirrored by hand.** `text-align: end`, `border-inline-start`,
+  `padding-inline-start` and friends flip on their own under `dir="rtl"`. Only
+  three things need explicit overrides: the today-row inset shadow, the `→` in
+  raw→adjusted cells, and the letter-spacing on labels (tracking is a Latin
+  device — Hebrew has no case, so spaced-out נתונים just looks broken).
+- **Figures are not text.** `unicode-bidi: plaintext` on numeric cells stops the
+  bidi algorithm reordering `+8 bp` or `3.28% → 3.28%` inside an RTL line, and the
+  formula block is pinned `direction: ltr` because maths is written LTR in every
+  language.
+- Release types (`Calendar` / `CPI-dated`) are translated through `pub.*` keys to
+  BOI's own Hebrew names, קלנדרי and מדדי.
+
+The Hebrew is banking vocabulary rather than literal translation — עוגן, מרווח,
+מק"מ, לוח שפיצר — because that is the wording the reader's own mortgage contract
+uses.
+
 ## Design decisions worth not undoing
 
 **The page holds *sources*, not merged curves.** `state.src` keyed by

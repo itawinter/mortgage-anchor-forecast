@@ -24,6 +24,8 @@ read off the Bank of Israel yield curve.
   rather than expectation.
 - **The curve it all came from**, plotted, with each data source in its own
   colour so you can see exactly what went in.
+- **עברית or English** — one button, top corner. Hebrew lays the whole page out
+  right-to-left; your choice is remembered.
 
 ## Using it
 
