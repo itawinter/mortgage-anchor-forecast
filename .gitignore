@@ -4,3 +4,9 @@ curve.next.json
 preview.html
 *.png
 fixture.xls
+fixture-serial.xls
+
+# Editor and tooling directories
+.idea/
+.claude/
+.DS_Store
