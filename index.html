@@ -1429,8 +1429,8 @@ const I18N = {
     "lab.anchor": "Anchor today (%)",
     "lab.anchor.real": "Real anchor today (%)",
     "lab.anchor.prime": "Prime today (%)",
-    "hint.anchor": "Your contract's current anchor, as quoted by the bank.",
-    "hint.anchor.prime": "Currently 5.00% — the Bank of Israel rate of 3.50% plus the 1.5pp convention.",
+    "hint.anchor": "Read off the curve for this track; overwrite it with your contract's current anchor, as your bank quotes it.",
+    "hint.anchor.prime": "Read off the short end of the curve plus the 1.5pp convention; overwrite it with the prime rate your bank quotes.",
 
     "lab.term": "Mortgage term (years)",
     "hint.term.fixed": "The tenor the fixed rate is read from on the curve — this is what the projection prices.",
@@ -1681,8 +1681,8 @@ const I18N = {
     "lab.anchor": "עוגן היום (%)",
     "lab.anchor.real": "עוגן ריאלי היום (%)",
     "lab.anchor.prime": "פריים היום (%)",
-    "hint.anchor": "העוגן הנוכחי בחוזה שלכם, כפי שהבנק מצטט אותו.",
-    "hint.anchor.prime": "כיום 5.00% — ריבית בנק ישראל של 3.50% בתוספת 1.5 נקודות האחוז המקובלות.",
+    "hint.anchor": "נקרא מהעקום עבור המסלול הזה; אפשר להחליף בעוגן הנוכחי שבחוזה שלכם, כפי שהבנק מצטט אותו.",
+    "hint.anchor.prime": "נקרא מהקצה הקצר של העקום בתוספת 1.5 נקודות האחוז המקובלות; אפשר להחליף בריבית הפריים שהבנק מצטט.",
 
     "lab.term": "תקופת המשכנתא (שנים)",
     "hint.term.fixed": "התקופה שממנה נקראת הריבית הקבועה על העקום — זה מה שהתחזית מתמחרת.",
@@ -4133,7 +4133,9 @@ function parsePaste(text) {
 /* ============================================================
    Wiring
    ============================================================ */
-[ "resetMonths","termYears","anchorToday","margin","horizons",
+// resetMonths is not here: it moves the tenor the anchor is read at, so it has
+// its own handler that re-derives the anchor BEFORE rendering.
+[ "termYears","anchorToday","margin","horizons",
   "principal","payYears","interp","adjMethod","adjParam" ].forEach(id => {
   $(id).addEventListener("input", render);
   $(id).addEventListener("change", render);
@@ -4287,13 +4289,23 @@ async function ingestSource(key, file) {
   }
 }
 
+/**
+ * Write the anchor the zero curve itself implies for the current track into the
+ * input. This is the field's derived value; the user is free to overwrite it
+ * with the number their bank actually quotes. Prime included — its rawToday is
+ * the short end plus the 1.5pp convention, which is still a curve read.
+ */
+function setAnchorFromCurve() {
+  const M0 = compute();                    // rawToday doesn't read the anchor field
+  if (!Number.isFinite(M0.rawToday)) return false;
+  $("anchorToday").value = M0.rawToday.toFixed(2);
+  return true;
+}
+
 /** Reseed the anchor from the new curve, unless the user has typed their own. */
 function reseedAnchor() {
   if (state.anchorTouched) return;
-  const M0 = compute();
-  if (Number.isFinite(M0.rawToday) && M0.track.kind !== "prime") {
-    $("anchorToday").value = M0.rawToday.toFixed(2);
-  }
+  setAnchorFromCurve();
 }
 
 /* ---- the source list ------------------------------------------------------ */
@@ -4443,17 +4455,25 @@ $("applyPaste").addEventListener("click", () => {
 $("track").addEventListener("change", () => {
   // Tracks quote anchors on different curves and tenors, so a value left over
   // from the previous track would produce a meaningless calibration offset —
-  // a real anchor of 1.2% against a nominal 3.4%, say. Reseed from the curve
-  // itself; the user then overwrites it with their contract's actual number.
+  // a real anchor of 1.2% against a nominal 3.4%, say. Choosing a track always
+  // re-reads the anchor off the curve for that track's own leg and tenor; the
+  // user then overwrites it with their contract's actual number.
   const t = TRACKS[$("track").value];
-  if (t.kind === "prime") {
-    $("anchorToday").value = "5.00";       // BOI 3.50% + the 1.5pp convention
-    $("margin").value = "-0.60";
-  } else {
-    const M = compute();                   // rawToday doesn't read the anchor field
-    if (Number.isFinite(M.rawToday)) $("anchorToday").value = M.rawToday.toFixed(2);
-    if (Number($("margin").value) < 0) $("margin").value = "1.20";
-  }
+  // The typed value, if any, belonged to the previous track and has just been
+  // discarded — so the field is curve-derived again and a later curve upload
+  // should keep reseeding it.
+  if (setAnchorFromCurve()) state.anchorTouched = false;
+  if (t.kind === "prime") $("margin").value = "-0.60";
+  else if (Number($("margin").value) < 0) $("margin").value = "1.20";
+  render();
+});
+
+$("resetMonths").addEventListener("change", () => {
+  // The reset interval IS the tenor a variable track's anchor is read at, so
+  // moving it from 12m to 60m reads a different point on the curve entirely.
+  // Same reasoning as the track: a value left over from the old interval would
+  // calibrate against the wrong rate, so re-derive and let the user overwrite.
+  if (setAnchorFromCurve()) state.anchorTouched = false;
   render();
 });
 
@@ -4479,6 +4499,10 @@ mergeAll();
 applyLang(initialLang(), { initial: true });
 renderSources();
 renderCurveEditor();
+// The anchor field is derived from the curve, not a hard-coded number, so seed
+// it off the baked-in curve before the first paint rather than waiting for
+// autoLoadCurve — that fetch is absent when the page is opened as a bare file.
+reseedAnchor();
 render();
 autoLoadCurve();
 </script>
