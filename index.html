@@ -664,19 +664,27 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
 /* ============================================================
    Language
    ============================================================ */
-.langbtn {
-  padding: 4px 11px;
+.topbar { display: flex; margin-bottom: 14px; }
+/* Physical, so the control keeps the same corner in Hebrew. */
+.langseg { margin-left: auto; flex: 0 0 auto; box-shadow: var(--shadow); }
+.langseg button {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
   background: var(--panel);
-  color: var(--ink-2);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  white-space: nowrap;
 }
-.langbtn:hover { border-color: var(--primary); color: var(--primary); }
+/* Showing both languages with the live one filled makes the control legible as a
+   language switcher at a glance — a lone pill reading "עברית" could as easily be
+   a heading as a button. */
+.langseg button[aria-pressed="true"] { background: var(--primary); color: var(--panel); }
+.langseg button[aria-pressed="false"]:hover { color: var(--primary); background: var(--panel-2); }
+[dir="rtl"] .langseg button { letter-spacing: normal; }
+
+@media (max-width: 620px) {
+  .topbar { margin-bottom: 10px; }
+  .langseg button { padding: 5px 12px; }
+}
 
 /* Figures are not text: a rate, a delta or a payment reads left-to-right in
    every language, and letting the bidi algorithm reorder "+8 bp" or "3.28% →
@@ -745,6 +753,17 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
 
 <div class="wrap">
 
+  <!-- Pinned to the PHYSICAL top right in both directions. `margin-left: auto`
+       rather than `flex-end`: in RTL flex-end is the left edge, and a language
+       switcher that jumps corners when you use it is a switcher you have to hunt
+       for the second time. -->
+  <div class="topbar">
+    <div class="seg langseg" role="group" data-i18n-attr="aria-label:aria.language">
+      <button type="button" id="langEn" aria-pressed="true" lang="en">English</button>
+      <button type="button" id="langHe" aria-pressed="false" lang="he">עברית</button>
+    </div>
+  </div>
+
   <header class="masthead">
     <div>
       <span class="eyebrow" data-i18n="mast.eyebrow">Israel · government curve · forward rates</span>
@@ -756,7 +775,6 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
       </p>
     </div>
     <div class="headline-figure">
-      <button type="button" class="langbtn" id="langToggle" aria-label="Switch to Hebrew">עברית</button>
       <canvas id="sparkStrip" aria-hidden="true"></canvas>
       <div class="figure-text">
         <span class="big num" id="hlValue">—</span>
@@ -1316,8 +1334,7 @@ const I18N = {
     "tenor.reset": "{n}m reset",
     "tenor.term": "{n}y term",
     "tenor.policy": "policy proxy",
-    "lang.other": "עברית",
-    "lang.switchTo": "Switch to Hebrew",
+    "aria.language": "Language",
     "doc.title": "Forward Mortgage Anchor Calculator — Israel",
 
     "mast.eyebrow": "Israel · government curve · forward rates",
@@ -1567,8 +1584,7 @@ const I18N = {
     "tenor.reset": "עדכון כל {n} חודשים",
     "tenor.term": "תקופה {n} שנים",
     "tenor.policy": "קירוב לריבית בנק ישראל",
-    "lang.other": "English",
-    "lang.switchTo": "החלף לאנגלית",
+    "aria.language": "שפה",
     "doc.title": "מחשבון עוגן משכנתא עתידי — ישראל",
 
     "mast.eyebrow": "ישראל · עקום ממשלתי · ריביות פורוורד",
@@ -1849,12 +1865,10 @@ function applyLang(lang, opts) {
     }
   }
 
-  const btn = $("langToggle");
-  if (btn) {
-    btn.textContent = t("lang.other");
-    btn.setAttribute("aria-label", t("lang.switchTo"));
-    btn.setAttribute("title", t("lang.switchTo"));
-  }
+  // Language names are never translated — "עברית" is what a Hebrew reader looks
+  // for, whatever language the page is currently in.
+  $("langEn").setAttribute("aria-pressed", String(LANG === "en"));
+  $("langHe").setAttribute("aria-pressed", String(LANG === "he"));
 
   try { localStorage.setItem("lang", LANG); } catch { /* private mode */ }
 
@@ -4376,7 +4390,8 @@ window.addEventListener("resize", () => {
 if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
-$("langToggle").addEventListener("click", () => applyLang(LANG === "he" ? "en" : "he"));
+$("langEn").addEventListener("click", () => { if (LANG !== "en") applyLang("en"); });
+$("langHe").addEventListener("click", () => { if (LANG !== "he") applyLang("he"); });
 
 mergeAll();
 // Language before the first paint: applyLang with initial:true only sets the
