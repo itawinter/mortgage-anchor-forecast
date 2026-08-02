@@ -1,5 +1,5 @@
 // Mapping an arbitrary securities listing to curve points.
-import { parseSource, parseJsonRows } from './refresh-curve.mjs';
+import { parseSource, parseJsonRows } from '../tools/refresh-curve.mjs';
 let pass=0; const errs=[];
 const eq=(n,a,b)=>{ if(JSON.stringify(a)===JSON.stringify(b)){pass++;console.log('  ok   '+n);}
   else errs.push(`${n}\n        got  ${JSON.stringify(a)}\n        want ${JSON.stringify(b)}`); };

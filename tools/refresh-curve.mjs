@@ -928,8 +928,19 @@ async function main() {
   let sources = args.sources;
   if (args.config) {
     const cfg = JSON.parse(fs.readFileSync(args.config, "utf8"));
+    // A file named in a config resolves against THE CONFIG, not the working
+    // directory. data/sources.json names the snapshot sitting beside it, and a
+    // config that only works when invoked from the repo root is a trap for a
+    // cron job, a subdirectory, or anyone who moves the file.
+    const base = path.dirname(path.resolve(args.config));
+    const rebase = f => (f && !path.isAbsolute(f)) ? path.resolve(base, f) : f;
     for (const leg of ["nominal", "real"]) {
-      for (const s of cfg[leg] || []) sources.push({ leg, ...s });
+      for (const s of cfg[leg] || []) {
+        const out = { leg, ...s };
+        if (out.file) out.file = rebase(out.file);
+        if (out.fallback?.file) out.fallback = { ...out.fallback, file: rebase(out.fallback.file) };
+        sources.push(out);
+      }
     }
     if (cfg.asOf && cfg.asOf !== "auto") args._asOf = cfg.asOf;
   }

@@ -1,11 +1,11 @@
 {
   "asOf": "2026-07-31",
-  "legAsOf": {"nominal":"2026-07-31","real":"2026-07-15"},
+  "legAsOf": {"nominal":"2026-07-31","real":"2026-07-31"},
   "source": "Bank of Israel",
   "sources": [
-    {"label":"shcd08_e.xls [nominal]","leg":"nominal","asOf":"2026-07-15","range":"1y..15y","points":8,"detail":"2026-07-15 / 2026-07-15 / CPI-dated","owns":[2,15],"ownsPoints":7},
+    {"label":"shcd08_e.xls [nominal]","leg":"nominal","asOf":"2026-07-31","range":"1y..15y","points":8,"detail":"2026-07-31 / 2026-07-31 / Calendar","owns":[2,15],"ownsPoints":7},
     {"label":"makam · TASE t_bills (live)","leg":"nominal","asOf":"2026-07-31","range":"0.008219y..0.928767y","points":12,"detail":null,"owns":[0.008219,0.928767],"ownsPoints":12},
-    {"label":"shcd07_e.xls [real]","leg":"real","asOf":"2026-07-15","range":"1y..20y","points":9,"detail":"2026-07-15 / 2026-07-15 / CPI-dated","owns":[1,20],"ownsPoints":9}
+    {"label":"shcd07_e.xls [real]","leg":"real","asOf":"2026-07-31","range":"1y..20y","points":9,"detail":"2026-07-31 / 2026-07-31 / Calendar","owns":[1,20],"ownsPoints":9}
   ],
   "nominal": [
     [0.008219, 3.65],
@@ -20,23 +20,23 @@
     [0.756164, 3.29],
     [0.832877, 3.29],
     [0.928767, 3.28],
-    [2, 3.29],
-    [3, 3.34],
-    [4, 3.37],
-    [5, 3.43],
-    [7, 3.56],
-    [10, 3.80],
-    [15, 4.06]
+    [2, 3.38],
+    [3, 3.46],
+    [4, 3.49],
+    [5, 3.53],
+    [7, 3.66],
+    [10, 3.88],
+    [15, 4.12]
   ],
   "real": [
-    [1, 1.70],
+    [1, 1.69],
     [2, 1.63],
-    [3, 1.61],
-    [4, 1.63],
-    [5, 1.66],
-    [7, 1.75],
-    [10, 1.92],
-    [15, 2.10],
-    [20, 2.20]
+    [3, 1.63],
+    [4, 1.66],
+    [5, 1.70],
+    [7, 1.81],
+    [10, 1.99],
+    [15, 2.16],
+    [20, 2.25]
   ]
 }

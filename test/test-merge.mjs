@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 let pass = 0; const errs = [];
 const eq = (n, a, b) => { if (JSON.stringify(a) === JSON.stringify(b)) { pass++; console.log('  ok   ' + n); }
@@ -17,6 +18,9 @@ const eq = (n, a, b) => { if (JSON.stringify(a) === JSON.stringify(b)) { pass++;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'merge-'));
 const p = f => path.join(dir, f);
+// Anchored to this file, not the working directory, so the suite runs from
+// anywhere rather than only from the repo root.
+const CLI = fileURLToPath(new URL('../tools/refresh-curve.mjs', import.meta.url));
 
 // The real shapes, reduced to what matters. Bill tenors are the actual ones from
 // the TASE pull on 2026-07-31; the long end is shcd08's own 1y..5y.
@@ -37,7 +41,7 @@ const run = governs => {
     { file: p('makam-live.csv'), label: 'makam · live', ...(governs ? { governs } : {}) }
   ] };
   fs.writeFileSync(p('sources.json'), JSON.stringify(cfg));
-  execFileSync(process.execPath, ['refresh-curve.mjs', '--config', p('sources.json'),
+  execFileSync(process.execPath, [CLI, '--config', p('sources.json'),
     '--out', p('curve.json')], { encoding: 'utf8', stdio: 'pipe' });
   return JSON.parse(fs.readFileSync(p('curve.json'), 'utf8'));
 };

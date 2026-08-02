@@ -15,15 +15,15 @@ jobs:
         with:
           node-version: "20"
       - run: npm install --no-audit --no-fund
-      - name: Parser and injection tests
-        run: |
-          node test-refresh.mjs
-          node test-wide.mjs
-          node test-json-rows.mjs
+      # Deliberately `npm test` rather than a list of files: the list here fell
+      # out of date the moment a suite was added, and a test that CI silently
+      # stopped running is worse than no test.
+      - name: Parser, merge and injection tests
+        run: npm test
       # test-xls-lite compares the bundled workbook reader against SheetJS on the
       # real Bank of Israel files. Those are binary and are not committed, so it
       # skips unless you drop them in. It is the test that proves the reader; run
-      # it locally with the workbooks present after touching xls-lite.mjs.
+      # it locally with the workbooks present after touching tools/xls-lite.mjs.
       - name: Workbook reader vs SheetJS (skipped without the .xls fixtures)
         run: |
-          node test-xls-lite.mjs || echo "skipped - no workbook fixtures in the repo"
+          node test/test-xls-lite.mjs || echo "skipped - no workbook fixtures in the repo"

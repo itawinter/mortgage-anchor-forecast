@@ -1,7 +1,7 @@
 import X from 'xlsx';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { rowsToCurveWide, rowsToCurveAuto, normaliseScale, readSpreadsheet, parseTenor } from './refresh-curve.mjs';
+import { rowsToCurveWide, rowsToCurveAuto, normaliseScale, readSpreadsheet, parseTenor } from '../tools/refresh-curve.mjs';
 let pass=0,fail=0;
 const eq=(n,g,w)=>{const a=JSON.stringify(g),b=JSON.stringify(w);
   if(a===b){pass++;console.log('  ok   '+n);}else{fail++;console.log('  FAIL '+n+'\n        got  '+a+'\n        want '+b);}};
@@ -80,6 +80,7 @@ const nom = rowsToCurveAuto(sheets[0].rows), real = rowsToCurveAuto(sheets[1].ro
 eq('xls nominal', nom.points, [[0.25,3.4],[0.5,3.3],[1,3.25],[2,3.4],[3,3.6],[5,3.8],[10,4.1],[20,4.4],[30,4.45]]);
 eq('xls real', real.points, [[1,1.15],[2,1.3],[5,1.7],[10,2],[30,2.3]]);
 eq('xls asOf survives binary round-trip', nom.diag.asOf, '2026-07-31');
+fs.unlinkSync('fixture.xls');       // gitignored, but don't litter the tree either
 
 // A workbook written from Date objects round-trips through SheetJS's own
 // timezone handling symmetrically, which hides a shift. The BOI files store bare
@@ -95,7 +96,7 @@ console.log('\n# date serials read the same in every timezone');
 
   const read = tz => execFileSync(process.execPath, ['--input-type=module','-e', `
       import fs from 'node:fs';
-      const { readSpreadsheet, rowsToCurveAuto } = await import('${import.meta.url}'.replace(/test-wide\\.mjs$/,'refresh-curve.mjs'));
+      const { readSpreadsheet, rowsToCurveAuto } = await import('${import.meta.url}'.replace(/test\\/test-wide\\.mjs$/,'tools/refresh-curve.mjs'));
       const s = await readSpreadsheet(fs.readFileSync('fixture-serial.xls'));
       process.stdout.write(String(rowsToCurveAuto(s[0].rows).diag.asOf));
     `], { env: { ...process.env, TZ: tz }, encoding: 'utf8' }).trim();

@@ -33,9 +33,9 @@ jobs:
       - name: Install SheetJS
         run: npm install --no-audit --no-fund
 
-      # Every source, URL and field name lives in sources.json — one place, read
-      # by this job and by `npm run refresh` alike, so a URL that moves is fixed
-      # once. All three were verified live on 2026-08-01.
+      # Every source, URL and field name lives in data/sources.json — one place,
+      # read by this job and by `npm run refresh` alike, so a URL that moves is
+      # fixed once. All three were verified live on 2026-08-01.
       #
       # If a source does not parse, refresh-curve.mjs exits non-zero and nothing
       # is committed. The exception is the Makam leg, which declares a fallback
@@ -46,7 +46,7 @@ jobs:
       - name: Pull the curves
         run: |
           set -euo pipefail
-          node refresh-curve.mjs --config sources.json --out curve.next.json --verbose
+          node tools/refresh-curve.mjs --config data/sources.json --out curve.next.json --verbose
 
       # A partial success is the dangerous case: if only one leg parsed, the file
       # would be written and would drop a curve the page needs. Check before

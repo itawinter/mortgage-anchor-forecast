@@ -1,13 +1,14 @@
 // Compare xls-lite against SheetJS on the real Bank of Israel workbooks.
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import * as XLSX from 'xlsx';
 import { JSDOM } from 'jsdom';
 const dom = new JSDOM(''); globalThis.DOMParser = dom.window.DOMParser;
-const { readWorkbook } = await import('./xls-lite.mjs');
+const { readWorkbook } = await import('../tools/xls-lite.mjs');
 // SheetJS dates are local, xls-lite's are UTC. Without re-anchoring the
 // reference side, every date cell "differs" by a day east of UTC and this
 // comparison fails on a machine in Israel for reasons that aren't about xls-lite.
-const { localDateToUTC } = await import('./refresh-curve.mjs');
+const { localDateToUTC } = await import('../tools/refresh-curve.mjs');
 
 const cell = v => v instanceof Date ? v.toISOString().slice(0,10)
   : typeof v === 'number' ? +v.toFixed(9) : (v == null ? null : String(v));
@@ -16,15 +17,21 @@ let pass = 0; const errs = [];
 const eq = (n, a, b) => { if (JSON.stringify(a) === JSON.stringify(b)) { pass++; console.log('  ok   '+n); }
   else errs.push(`${n}\n        got  ${JSON.stringify(a)}\n        want ${JSON.stringify(b)}`); };
 
-const FIXTURES = ['shcd08_e.xls','shcd07_e.xls','makam.xlsx'].filter(f => fs.existsSync(f));
+// Looked for at the repo root, not the working directory: the workbooks are
+// gitignored, and a fixture the suite silently fails to find is a test that
+// silently does not run.
+const root = new URL('../', import.meta.url);
+const FIXTURES = ['shcd08_e.xls','shcd07_e.xls','makam.xlsx']
+  .map(f => ({ name: f, path: fileURLToPath(new URL(f, root)) }))
+  .filter(f => fs.existsSync(f.path));
 if (!FIXTURES.length) {
   console.log('No workbook fixtures present — nothing to compare against.');
-  console.log('Drop shcd08_e.xls / shcd07_e.xls / makam.xlsx beside this file to run it.');
+  console.log('Drop shcd08_e.xls / shcd07_e.xls / makam.xlsx at the repo root to run it.');
   process.exit(0);
 }
 for (const f of FIXTURES) {
-  console.log('\n# '+f);
-  const buf = fs.readFileSync(f);
+  console.log('\n# '+f.name);
+  const buf = fs.readFileSync(f.path);
   const mine = await readWorkbook(buf.buffer.slice(buf.byteOffset, buf.byteOffset+buf.byteLength));
 
   const wb = XLSX.read(buf, { type:'buffer', cellDates:true });

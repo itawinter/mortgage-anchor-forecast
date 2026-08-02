@@ -1,5 +1,5 @@
 import { parseDelimited, parseTenor, parseRate, rowsToCurve, parseSdmxJson,
-         parseSource, injectIntoHtml, formatPoints } from './refresh-curve.mjs';
+         parseSource, injectIntoHtml, formatPoints } from '../tools/refresh-curve.mjs';
 import fs from 'node:fs';
 let pass=0, fail=0;
 const eq=(name,got,want)=>{ const g=JSON.stringify(got), w=JSON.stringify(want);
