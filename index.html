@@ -5,6 +5,30 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Projects the future interest-rate anchor of an Israeli mortgage track from the Bank of Israel government bond zero curve, using forward rates.">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSI4MiIgZm9udC1zaXplPSI4MiI+8J+TiDwvdGV4dD48L3N2Zz4=">
+
+<!-- Direction before the first paint.
+     The markup below is authored in English and the main script is one large
+     inline block at the END of the body, so the browser paints the whole LTR
+     page before it ever reaches applyLang() — a Hebrew reader watched the
+     layout mirror itself on every load. This runs in the head, before any of
+     that markup is parsed, so the page is laid out right the first time.
+     Detection lives here and nowhere else: initialLang() below reads the
+     result back rather than repeating the rules and drifting from them.
+     The English strings still swap to Hebrew when the main script runs; that
+     is a re-paint of text in place, not of the layout, and gating it would
+     mean showing a blank page until 180 kB of script has parsed. -->
+<script>
+window.__initialLang = (function () {
+  try {
+    var saved = localStorage.getItem("lang");
+    if (saved === "en" || saved === "he") return saved;
+  } catch (e) { /* private mode */ }
+  var nav = ((navigator.languages || [navigator.language || ""]).join(",")).toLowerCase();
+  return /\bhe\b|^he|iw/.test(nav) ? "he" : "en";
+})();
+document.documentElement.setAttribute("lang", window.__initialLang);
+document.documentElement.setAttribute("dir", window.__initialLang === "he" ? "rtl" : "ltr");
+</script>
 </head>
 <body>
 <title>Forward Mortgage Anchor Calculator — Israel</title>
@@ -1235,14 +1259,14 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
    carries that timing mismatch.
    ============================================================ */
 const DEFAULT_NOMINAL = [
-  [0.083333, 3.72], [0.166667, 3.26], [0.25, 3.23], [0.333333, 3.30], [0.416667, 3.28], [0.5, 3.29],
-  [0.583333, 3.28], [0.666667, 3.27], [0.75, 3.27], [0.833333, 3.30], [0.916667, 3.28], [1, 3.28],
-  [2, 3.29], [3, 3.34], [4, 3.37], [5, 3.43], [7, 3.56], [10, 3.80],
-  [15, 4.06]
+  [0.008219, 3.65], [0.084932, 3.31], [0.180822, 3.17], [0.257534, 3.25], [0.334247, 3.24], [0.430137, 3.25],
+  [0.506849, 3.27], [0.583562, 3.23], [0.679452, 3.23], [0.756164, 3.29], [0.832877, 3.29], [0.928767, 3.28],
+  [2, 3.38], [3, 3.46], [4, 3.49], [5, 3.53], [7, 3.66], [10, 3.88],
+  [15, 4.12]
 ];
 const DEFAULT_REAL = [
-  [1, 1.70], [2, 1.63], [3, 1.61], [4, 1.63], [5, 1.66], [7, 1.75],
-  [10, 1.92], [15, 2.10], [20, 2.20]
+  [1, 1.69], [2, 1.63], [3, 1.63], [4, 1.66], [5, 1.70], [7, 1.81],
+  [10, 1.99], [15, 2.16], [20, 2.25]
 ];
 
 /**
@@ -1257,23 +1281,25 @@ const DEFAULT_REAL = [
  */
 const BUILTIN_PROV = {
   nominal: {
-    kind: "baked", label: "BOI zero-coupon curve + Makam", asOf: "2026-07-30",
+    kind: "baked", label: "BOI zero-coupon curve + Makam", asOf: "2026-07-31",
     parts: [
       "makam.xlsx · 1m–1y · daily · 2026-07-30",
       "shcd08_e.xls · 2y–15y · monthly avg · 2026-07-15"
     ],
     segs: [
-      { key: "makam", label: "Makam (T-bill) yields", file: "makam.xlsx",
-        from: 0.083333, to: 1, asOf: "2026-07-30" },
       { key: "shcd08", label: "Government bond yields · nominal zero-coupon curve",
-        file: "shcd08_e.xls", from: 2, to: 15, asOf: "2026-07-15" }
+        file: "shcd08_e.xls", from: 2, to: 15, asOf: "2026-07-31" },
+      { key: "makam", label: "Makam (T-bill) yields",
+        file: "makam · TASE t_bills (live)", from: 0.008219, to: 0.928767, asOf: "2026-07-31" }
     ]
   },
   real: {
-    kind: "baked", label: "BOI real (Galil) zero-coupon curve", asOf: "2026-07-15",
+    kind: "baked", label: "BOI real (Galil) zero-coupon curve", asOf: "2026-07-31",
     parts: ["shcd07_e.xls · 1y–20y · monthly avg · 2026-07-15"],
-    segs: [{ key: "shcd07", label: "Government bond yields · CPI-linked (real) zero-coupon curve",
-             file: "shcd07_e.xls", from: 1, to: 20, asOf: "2026-07-15" }]
+    segs: [
+      { key: "shcd07", label: "Government bond yields · CPI-linked (real) zero-coupon curve",
+        file: "shcd07_e.xls", from: 1, to: 20, asOf: "2026-07-31" }
+    ]
   }
 };
 
@@ -1914,8 +1940,17 @@ function applyLang(lang, opts) {
   }
 }
 
-/** Stored choice, else the browser's, else English. */
+/**
+ * Stored choice, else the browser's, else English — but decided by the head
+ * script, not here. It has to run before the first paint to get the direction
+ * right (see the comment on it), so by the time this script loads the answer
+ * already exists and re-deriving it would only invite the two copies to drift.
+ * The fallback covers the head script having been stripped, not private mode:
+ * it does its own try/catch and always leaves a value behind.
+ */
 function initialLang() {
+  const early = window.__initialLang;
+  if (early && I18N[early]) return early;
   try {
     const saved = localStorage.getItem("lang");
     if (saved && I18N[saved]) return saved;
@@ -4431,8 +4466,10 @@ $("langEn").addEventListener("click", () => { if (LANG !== "en") applyLang("en")
 $("langHe").addEventListener("click", () => { if (LANG !== "he") applyLang("he"); });
 
 mergeAll();
-// Language before the first paint: applyLang with initial:true only sets the
-// document and the static strings, leaving the render below to do the rest once.
+// The head script has already set lang and dir off the same choice, so this is
+// the strings catching up, not the layout: applyLang with initial:true only
+// sets the document and the static strings, leaving the render below to do the
+// rest once.
 applyLang(initialLang(), { initial: true });
 renderSources();
 renderCurveEditor();

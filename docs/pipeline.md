@@ -19,10 +19,20 @@ covers what the page *is*.
         ├─ sanity-check the result   both legs present? short end? long end?
         │                            rates inside -5..25%?
         │
-        └─ commit curve.json only if it changed and passed
+        ├─ bake the validated curve into index.html's built-in defaults
+        │
+        └─ commit curve.json + index.html if either changed and it passed
                 │
                 └─ GitHub Pages redeploys → index.html fetches ./curve.json
 ```
+
+**Both files, always.** The page paints its baked-in curve first and only then
+applies the fetched `curve.json`, so if the two disagree every load opens on the
+older numbers and visibly corrects itself a moment later. Refreshing `curve.json`
+alone also lets the baked copy drift further behind on every run, since nothing
+else rewrites it. The bake step injects the file that just passed the check
+rather than re-running the pull, so the page and `curve.json` cannot end up
+describing different curves.
 
 Same-origin, so no CORS is involved — which is the whole reason this shape is
 needed. A browser cannot fetch `boi.org.il` or `market.tase.co.il` directly:
@@ -215,7 +225,8 @@ there is stale by construction. The page renders its dates from the data instead
 ## Layout
 
 ```
-index.html               the calculator (contains an inlined copy of xls-lite.mjs)
+index.html               the calculator (contains an inlined copy of xls-lite.mjs);
+                         its baked-in curve is rewritten by the scheduled job too
 curve.json               current curve; rewritten by the scheduled job
 tools/refresh-curve.mjs  fetch → parse → merge → curve.json; also --inject
 tools/xls-lite.mjs       dependency-free .xls/.xlsx reader (source of the inlined copy)

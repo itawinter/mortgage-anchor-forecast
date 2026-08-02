@@ -1,8 +1,12 @@
 name: Refresh curve
 
-# Pulls the Bank of Israel tables, rebuilds curve.json, and commits it. GitHub
-# Pages redeploys on that commit, so the page picks the new curve up on the next
-# load with no rebuild and no manual step.
+# Pulls the Bank of Israel tables, rebuilds curve.json, bakes the same curve
+# into the page's built-in defaults, and commits both. GitHub Pages redeploys on
+# that commit, so the page picks the new curve up on the next load with no
+# rebuild and no manual step.
+#
+# BOTH, always. The page fetches curve.json but paints its baked copy first, so
+# the two have to move together or every load opens on the older one.
 #
 # CADENCE. The two zero-coupon tables publish TWICE A MONTH (the release
 # calendar is in the page). A nightly run is therefore already faster than the
@@ -14,7 +18,7 @@ on:
   workflow_dispatch:              # and on demand from the Actions tab
 
 permissions:
-  contents: write                 # to commit the refreshed curve.json
+  contents: write                 # to commit the refreshed curve.json and page
 
 concurrency:
   group: refresh-curve
@@ -71,15 +75,39 @@ jobs:
           '
           mv curve.next.json curve.json
 
+      # The page carries a BAKED copy of the curve so it works with no network,
+      # and it paints that copy before the curve.json fetch lands. Refreshing
+      # curve.json alone therefore leaves the page opening on the previous
+      # curve for a beat on every single load — and, because nothing else ever
+      # rewrites the baked copy, drifting further behind with every run.
+      #
+      # This injects the file that just passed the check above, rather than
+      # re-running the pull with --inject: a second fetch could return a
+      # different curve from the one that was validated, and the page and
+      # curve.json would then disagree with nothing to catch it. Importing the
+      # tool is side-effect free — it guards its own entrypoint.
+      - name: Bake the validated curve into the page
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import { injectIntoHtml } from "./tools/refresh-curve.mjs";
+            const curve = JSON.parse(fs.readFileSync("curve.json", "utf8"));
+            const { html, changed } = injectIntoHtml(fs.readFileSync("index.html", "utf8"), curve);
+            if (!changed.length) { console.error("REJECTED: nothing was injected"); process.exit(1); }
+            fs.writeFileSync("index.html", html);
+            console.log("baked into index.html: " + changed.join(", "));
+          '
+
       - name: Commit if the curve moved
         run: |
           set -euo pipefail
-          if git diff --quiet -- curve.json; then
-            echo "curve.json unchanged — nothing to commit."
+          if git diff --quiet -- curve.json index.html; then
+            echo "curve unchanged — nothing to commit."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add curve.json
+          git add curve.json index.html
           git commit -m "curve: refresh from Bank of Israel ($(date -u +%Y-%m-%d))"
           git push

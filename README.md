@@ -84,7 +84,7 @@ self-contained HTML file.
 
 ```bash
 npm install
-npm run refresh   # pull the latest curves, rewrite curve.json
+npm run refresh   # pull the latest curves, rewrite curve.json and the page's baked copy
 npm run serve     # http://localhost:8080
 npm test          # 122 assertions
 ```

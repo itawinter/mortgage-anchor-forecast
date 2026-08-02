@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Forward-rate projection of Israeli mortgage anchors from the Bank of Israel zero-coupon curve",
   "scripts": {
-    "refresh": "node tools/refresh-curve.mjs --config data/sources.json --out curve.json --verbose",
-    "refresh:offline": "node tools/refresh-curve.mjs --nominal --url https://www.boi.org.il/boi_files/Statistics/shcd08_e.xls --real --url https://www.boi.org.il/boi_files/Statistics/shcd07_e.xls --nominal --file data/makam-short-end.csv --out curve.json --verbose",
+    "refresh": "node tools/refresh-curve.mjs --config data/sources.json --out curve.json --inject index.html --verbose",
+    "refresh:offline": "node tools/refresh-curve.mjs --nominal --url https://www.boi.org.il/boi_files/Statistics/shcd08_e.xls --real --url https://www.boi.org.il/boi_files/Statistics/shcd07_e.xls --nominal --file data/makam-short-end.csv --out curve.json --inject index.html --verbose",
     "test": "node test/test-refresh.mjs && node test/test-wide.mjs && node test/test-json-rows.mjs && node test/test-merge.mjs",
     "serve": "node --input-type=module -e \"import http from 'node:http';import fs from 'node:fs';import path from 'node:path';const t={'.html':'text/html','.json':'application/json','.csv':'text/csv','.mjs':'text/javascript'};http.createServer((q,s)=>{const f=path.join(process.cwd(),q.url==='/'?'index.html':q.url.split('?')[0]);if(!fs.existsSync(f)){s.writeHead(404);return s.end('not found');}s.writeHead(200,{'Content-Type':t[path.extname(f)]||'text/plain'});s.end(fs.readFileSync(f));}).listen(8080,()=>console.log('http://localhost:8080'))\""
   },
