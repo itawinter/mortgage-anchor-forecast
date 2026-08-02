@@ -1712,7 +1712,11 @@ const I18N = {
     "curve.note": "נתוני השוק שכל התחזית נקראת מהם — <b>לא</b> תוצאה. כל עוגן בטבלה שלמעלה הוא ריבית פורוורד המחושבת משני העקומים האלה, כך שהתרשים כאן כדי להראות מה נכנס, וכדי שיהיה ברור מיד אם נטען הקובץ הלא נכון.",
     "drop.text": "גררו לכאן חוברת עבודה של בנק ישראל, קובץ CSV או <code class=\"k\">curve.json</code> — הקובץ ינותב לסדרה שהוא מתאים לה.",
     "sub.sources": "מקורות הנתונים",
-    "hint.sources": "הורידו את הטבלאות העדכניות מאתר בנק ישראל: <a href=\"https://www.boi.org.il/he/economic-roles/statistics/bonds-and-central-bank-bills-makam/bonds-and-central-bank-bills-makam-yields-to-maturity/#mainContent\" target=\"_blank\" rel=\"noopener noreferrer\">אגרות חוב ומק\"מ — תשואות לפדיון</a>. הדף קורא <code class=\"k\">.xls</code>, <code class=\"k\">.xlsx</code> ו‑CSV; השורה האחרונה בכל טבלה נלקחת כעדכנית ביותר, וכל מספר בדף מחושב מחדש ממנה.",
+    // The Hebrew page lives at a DIFFERENT path, not the English one with a
+    // locale prefix swapped in: boi.org.il/roles/… against /en/economic-roles/….
+    // Deriving one from the other produced a dead link that looked plausible.
+    // Verify each locale's URL by opening it; they are not related by rule.
+    "hint.sources": "הורידו את הטבלאות העדכניות מאתר בנק ישראל: <a href=\"https://www.boi.org.il/roles/statistics/makamandbonds/yield/\" target=\"_blank\" rel=\"noopener noreferrer\">אגרות חוב ומק\"מ — תשואות לפדיון</a>. הדף קורא <code class=\"k\">.xls</code>, <code class=\"k\">.xlsx</code> ו‑CSV; השורה האחרונה בכל טבלה נלקחת כעדכנית ביותר, וכל מספר בדף מחושב מחדש ממנה.",
     "chip.reset": "חזרה לעקום המוטמע",
     "chip.paste": "עריכה / הדבקת נקודות",
     "lab.paste": "זוגות תקופה / ריבית",
