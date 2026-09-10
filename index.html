@@ -1261,8 +1261,8 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
    carries that timing mismatch.
    ============================================================ */
 const DEFAULT_NOMINAL = [
-  [0.076712, 3.01], [0.153425, 3.08], [0.230137, 3.11], [0.326027, 3.16], [0.40274, 3.14], [0.479452, 3.11],
-  [0.575342, 3.13], [0.652055, 3.16], [0.728767, 3.14], [0.824658, 3.16], [0.90137, 3.16], [0.99726, 3.18],
+  [0.073973, 3.12], [0.150685, 3.07], [0.227397, 3.10], [0.323288, 3.12], [0.4, 3.14], [0.476712, 3.11],
+  [0.572603, 3.13], [0.649315, 3.16], [0.726027, 3.14], [0.821918, 3.16], [0.89863, 3.15], [0.994521, 3.17],
   [2, 3.39], [3, 3.48], [4, 3.53], [5, 3.58], [7, 3.71], [10, 3.91],
   [15, 4.12]
 ];
@@ -1283,7 +1283,7 @@ const DEFAULT_REAL = [
  */
 const BUILTIN_PROV = {
   nominal: {
-    kind: "baked", label: "BOI zero-coupon curve + Makam", asOf: "2026-09-09",
+    kind: "baked", label: "BOI zero-coupon curve + Makam", asOf: "2026-09-10",
     parts: [
       "makam.xlsx · 1m–1y · daily · 2026-07-30",
       "shcd08_e.xls · 2y–15y · monthly avg · 2026-07-15"
@@ -1292,7 +1292,7 @@ const BUILTIN_PROV = {
       { key: "shcd08", label: "Government bond yields · nominal zero-coupon curve",
         file: "shcd08_e.xls", from: 2, to: 15, asOf: "2026-08-31" },
       { key: "makam", label: "Makam (T-bill) yields",
-        file: "makam · TASE t_bills (live)", from: 0.076712, to: 0.99726, asOf: "2026-09-09" }
+        file: "makam · TASE t_bills (live)", from: 0.073973, to: 0.994521, asOf: "2026-09-10" }
     ]
   },
   real: {
