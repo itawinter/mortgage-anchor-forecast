@@ -1261,14 +1261,14 @@ code.k { font-family: var(--mono); font-size: 0.86em; color: var(--ink); backgro
    carries that timing mismatch.
    ============================================================ */
 const DEFAULT_NOMINAL = [
-  [0.013699, 3.65], [0.090411, 3.11], [0.186301, 3.02], [0.263014, 3.07], [0.339726, 2.97], [0.435616, 2.93],
-  [0.512329, 3.03], [0.589041, 3.04], [0.684932, 3.09], [0.761644, 3.10], [0.857534, 3.08], [0.934247, 3.09],
-  [2, 3.52], [3, 3.72], [4, 3.80], [5, 3.86], [7, 4.00], [10, 4.21],
-  [15, 4.44]
+  [0.005479, 3.65], [0.082192, 2.83], [0.178082, 3.00], [0.254795, 3.01], [0.331507, 2.93], [0.427397, 2.94],
+  [0.50411, 2.98], [0.580822, 3.00], [0.676712, 3.03], [0.753425, 3.06], [0.849315, 3.08], [0.926027, 3.10],
+  [2, 3.45], [3, 3.68], [4, 3.79], [5, 3.86], [7, 4.02], [10, 4.24],
+  [15, 4.48]
 ];
 const DEFAULT_REAL = [
-  [1, 1.44], [2, 1.58], [3, 1.71], [4, 1.81], [5, 1.89], [7, 2.01],
-  [10, 2.20], [15, 2.35], [20, 2.45]
+  [1, 1.35], [2, 1.52], [3, 1.69], [4, 1.81], [5, 1.90], [7, 2.04],
+  [10, 2.24], [15, 2.39], [20, 2.50]
 ];
 
 /**
@@ -1283,24 +1283,24 @@ const DEFAULT_REAL = [
  */
 const BUILTIN_PROV = {
   nominal: {
-    kind: "baked", label: "BOI zero-coupon curve + Makam", asOf: "2026-10-30",
+    kind: "baked", label: "BOI zero-coupon curve + Makam", asOf: "2026-11-02",
     parts: [
       "makam.xlsx · 1m–1y · daily · 2026-07-30",
       "shcd08_e.xls · 2y–15y · monthly avg · 2026-07-15"
     ],
     segs: [
       { key: "shcd08", label: "Government bond yields · nominal zero-coupon curve",
-        file: "shcd08_e.xls", from: 2, to: 15, asOf: "2026-10-15" },
+        file: "shcd08_e.xls", from: 2, to: 15, asOf: "2026-10-31" },
       { key: "makam", label: "Makam (T-bill) yields",
-        file: "makam · TASE t_bills (live)", from: 0.013699, to: 0.934247, asOf: "2026-10-30" }
+        file: "makam · TASE t_bills (live)", from: 0.005479, to: 0.926027, asOf: "2026-11-02" }
     ]
   },
   real: {
-    kind: "baked", label: "BOI real (Galil) zero-coupon curve", asOf: "2026-10-15",
+    kind: "baked", label: "BOI real (Galil) zero-coupon curve", asOf: "2026-10-31",
     parts: ["shcd07_e.xls · 1y–20y · monthly avg · 2026-07-15"],
     segs: [
       { key: "shcd07", label: "Government bond yields · CPI-linked (real) zero-coupon curve",
-        file: "shcd07_e.xls", from: 1, to: 20, asOf: "2026-10-15" }
+        file: "shcd07_e.xls", from: 1, to: 20, asOf: "2026-10-31" }
     ]
   }
 };
